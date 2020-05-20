@@ -25,8 +25,16 @@ bool checkIPbuffer(char *IPbuffer){
         return false;
     }
 	return true;
-} 
+}
 
+int Server_socket::accept(){
+	struct sockaddr client_addr;
+	socklen_t addr_size;
+	addr_size = sizeof(client_addr);
+	int client_sock = ::accept(sock, &client_addr, &addr_size);
+	cout << "Accepted: " << addrstr(&client_addr) << endl;
+	return client_sock;
+}
 
 Server_socket::Server_socket(const char* _port){
 		
@@ -100,4 +108,15 @@ Server_socket::Server_socket(const char* _port){
 		return ;
 	}
 	freeaddrinfo(servinfo);
+}
+
+string addrstr(struct sockaddr* info){
+	
+	struct sockaddr_in *ipv4 = (struct sockaddr_in *)info;
+	void *addr = &(ipv4->sin_addr);
+	char ipstr[INET6_ADDRSTRLEN];
+	inet_ntop(AF_INET, addr, ipstr, sizeof(ipstr));		
+	uint16_t port = ntohs(ipv4->sin_port);
+
+	return string(ipstr) + ":" + to_string(port);
 }

@@ -19,9 +19,6 @@ using namespace std;
 
 #define BACKLOG 10     // how many pending connections queue will hold
 
-bool checkHostName(int hostname);
-bool checkHostEntry(struct hostent * hostentry);
-bool checkIPbuffer(char *IPbuffer);
 
 class Server_socket{
 	
@@ -31,19 +28,27 @@ class Server_socket{
 	
 public:
 	Server_socket(const char* _port);
-	bool valid(){ return sock > 0; };
-	const char* get_ip(){ return ip; };
-	const char* get_port(){	return port; };
-	
+	int accept();
 	int recv(){
 		return 0;
 	};
 
+	bool valid(){ return sock > 0; };
+	const char* get_ip(){ return ip; };
+	const char* get_port(){	return port; };
+	const int get_sock(){ return sock; };
+	
 	// ~Server_socket(){ 
 	// 	cout << "socket closed\n";
 	// 	close(sock);
 	// };
 };
+
+
+bool checkHostName(int hostname);
+bool checkHostEntry(struct hostent * hostentry);
+bool checkIPbuffer(char *IPbuffer);
+string addrstr(struct sockaddr* info);
 
 
 #endif

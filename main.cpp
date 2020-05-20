@@ -4,13 +4,8 @@
 // CEON 317 Distributed System
 // P2P-Kademlia
 
-#include "main.hpp"
+#include "kad_util.hpp"
 
-char config_file[200] = "default.config";
-char bootstrap[32] = "";
-char local_port[32] = "";
-char local_ip[32] = "";
-int local_k = 0;
 
 int main(int argc, char* argv[]){
 	
@@ -39,49 +34,23 @@ int main(int argc, char* argv[]){
 	printf("%s\n", gtime);
 	
 	//get config file content
-	ifstream config;
-	config.open(config_file);
-	if(!config){
-	    cerr << "Cannot open config file.\n";
-	    return 1;
-	}else{
-		char str[256] = "";
-		string attr = "";
-		char val[256] = "";
-		
-		while(config >> attr >> val){
-			if(attr == "bootstrap"){
-				strcpy(bootstrap, val);
-			}else if(attr == "port"){
-				strcpy(local_port, val);
-			}else if(attr == "k"){
-				local_k = atoi(val);
-			}else{
-				;
-			}
-		}
-		config.close();
-		printf("-----------------------------------\n");
-		printf("    Configurations      \n");
-		printf("-----------------------------------\n");
-		printf("bootstrap : %s\n", bootstrap);
-		printf("port      : %s\n", local_port);
-		printf("k         : %d\n", local_k);
+	if(!get_config(config_file)){
+		return 1;
 	}
 
 	// create tcp server
-	Server_socket server(local_port);
-	if(!server.valid()){
-		cerr << "Server initialization failed.\n";
-		return 1;
-	}
-	printf("local ip  : %s\n", server.get_ip());
+	pthread_t server_ID = 0;
+	pthread_create(&server_ID, NULL, serverThread, NULL);
+	usleep(100000);
+
 	printf("-----------------------------------\n");
 	printf("Waiting for command:\n");
 	string cmd = "";
-	while(true){
+	while(RUNNING){
 		cin >> cmd;
 		if(cmd == "exit"){
+			RUNNING = false;
+			pthread_join(server_ID, NULL);
 			break;
 		}
 		usleep(500);
