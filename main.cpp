@@ -33,7 +33,7 @@ int main(int argc, char* argv[]){
 	print_time(gtime);
 	printf("%s\n", gtime);
 	
-	//get config file content
+	// get config file content
 	if(!get_config(config_file)){
 		return 1;
 	}
@@ -43,20 +43,33 @@ int main(int argc, char* argv[]){
 	pthread_create(&server_ID, NULL, serverThread, NULL);
 	usleep(100000);
 
-	printf("-----------------------------------\n");
+	// printf("-----------------------------------\n");
 	printf("Waiting for command:\n");
-	string cmd = "";
+	char cmd[1024] = "";
+	
 	while(RUNNING){
-		cin >> cmd;
-		if(cmd == "exit"){
+		cin.getline (cmd,1024);
+		// cin >> cmd;
+		// handle the command 
+		// if(cmd == "exit"){
+		if(!strcmp(cmd, "exit")){
 			RUNNING = false;
 			pthread_join(server_ID, NULL);
 			break;
+		}else{
+			char ip[32] = "192.168.1.20";
+			char port[32] = "8888";
+			char sendbuf[1400] = "Hello from client"; 
+			sscanf(cmd, "%s %s %s", ip, port, sendbuf);
+			Client_socket client(ip, port);
+			if(client.valid()){
+				client.send(sendbuf, strlen(sendbuf));
+			}
 		}
 		usleep(500);
 	}
 
-	printf("\n\n.\n");
+	printf("\n\ndone.\n");
 	return 0;
 }
 

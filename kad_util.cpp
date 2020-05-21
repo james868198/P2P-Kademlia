@@ -19,18 +19,18 @@ void* serverThread(void* p){
 	}
 	printf("local ip  : %s\n", server.get_ip());
 
-	struct pollfd fds[20];
-	memset(fds, 0 , sizeof(fds));
-	int    nfds = 1;
-	fds[0].fd = server.get_sock();
-	fds[0].events = POLLIN;
-	int ptimeout = 1;
-	int retVal = 0;
-	
+	char recvbuf[1400] = {};
+	int n = 0;
+	struct sockaddr cliaddr; 
+
 	cout << "Waiting..." << endl;
 	while(RUNNING){
-		if((retVal = poll(fds, nfds, ptimeout)) > 0){
-			server.accept();
+		if((n = server.recv(recvbuf, &cliaddr, sizeof(recvbuf))) > 0){
+			// do something
+
+			cout << addrstr(&cliaddr) << " >> ";
+    		printf("%s\n", recvbuf); 
+			;
 		}else{
 			usleep(500);
 		}
