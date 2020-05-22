@@ -12,12 +12,13 @@ int local_k = 0;
 void* serverThread(void* p){
 
 	Server_socket server(local_port);
-	if(!server.valid()){
+	if(!server){
 		cerr << "Server initialization failed.\n";
 		RUNNING = false;
 		return 0;
 	}
-	printf("local ip  : %s\n", server.get_ip());
+	strcpy(local_ip, server.get_ip());
+	printf("local ip  : %s\n", local_ip);
 
 	char recvbuf[1400] = {};
 	int n = 0;
@@ -27,10 +28,8 @@ void* serverThread(void* p){
 	while(RUNNING){
 		if((n = server.recv(recvbuf, &cliaddr, sizeof(recvbuf))) > 0){
 			// do something
-
 			cout << addrstr(&cliaddr) << " >> ";
     		printf("%s\n", recvbuf); 
-			;
 		}else{
 			usleep(500);
 		}

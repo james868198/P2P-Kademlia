@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <fstream>
 #include "UDP_socket.hpp"
+#include "easy_file.hpp"
 
 using namespace std;
 

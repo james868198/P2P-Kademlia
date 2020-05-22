@@ -1,33 +1,6 @@
 #include "UDP_socket.hpp"
 
 
-bool checkHostName(int hostname){ 
-    if(hostname == -1){ 
-        perror("gethostname"); 
-        return false;
-    } 
-	return true;
-} 
-  
-// Returns host information corresponding to host name 
-bool checkHostEntry(struct hostent * hostentry){ 
-    if(hostentry == NULL){ 
-        perror("gethostbyname"); 
-        return false;
-    } 
-	return true;
-} 
-  
-// Converts space-delimited IPv4 addresses 
-// to dotted-decimal format 
-bool checkIPbuffer(char *IPbuffer){ 
-    if(NULL == IPbuffer){ 
-        perror("inet_ntoa"); 
-        return false;
-    }
-	return true;
-}
-
 int Server_socket::recv(char* recvbuf, struct sockaddr* cliaddr, int len){
 	socklen_t addlen;
 
@@ -42,12 +15,14 @@ Server_socket::Server_socket(const char* _port){
 	// To retrieve local host ip 
 	int hostname = gethostname(ip, sizeof(ip)); 
 	if(!checkHostName(hostname)){
+		this->~Server_socket();
 		return ;
 	}
   
 	// To retrieve local host information 
 	struct hostent* host_entry = gethostbyname(ip); 
 	if(!checkHostEntry(host_entry)){
+		this->~Server_socket();
 		return ;
 	}
 	// To convert an Internet network 
@@ -69,7 +44,7 @@ Server_socket::Server_socket(const char* _port){
 
 	if((status = getaddrinfo(ip, port, &hints, &servinfo)) != 0) {
 	    cout << "getaddrinfo error: " << gai_strerror(status) << endl;
-		cout << "exit." << endl;
+		this->~Server_socket();
 	    return ;
 	}
 
@@ -77,6 +52,7 @@ Server_socket::Server_socket(const char* _port){
 		/* failed to create socket */
 		perror("socket() failed");
 		sock = 0;
+		this->~Server_socket();
 		return ;
 	}
 	int on = 1;
@@ -84,6 +60,7 @@ Server_socket::Server_socket(const char* _port){
 	    perror("setsockopt() failed");
 		close(sock);
 		sock = 0;
+		this->~Server_socket();
 		return ;
 	}
 
@@ -91,6 +68,7 @@ Server_socket::Server_socket(const char* _port){
 		perror("ioctl() failed");
 		close(sock);
 		sock = 0;
+		this->~Server_socket();
 		return ;
 	}
 
@@ -99,6 +77,7 @@ Server_socket::Server_socket(const char* _port){
 		perror("socket() failed");
 		close(sock);
 		sock = 0;
+		this->~Server_socket();
 		return ;
 	}
 	servaddr = *servinfo->ai_addr;
@@ -127,7 +106,7 @@ Client_socket::Client_socket(const char* _ip, const char* _port){
 
 	if((status = getaddrinfo(_ip, _port, &hints, &servinfo)) != 0) {
 	    cout << "getaddrinfo error: " << gai_strerror(status) << endl;
-		cout << "exit." << endl;
+		this->~Client_socket();
 	    return ;
 	}
 
@@ -135,6 +114,7 @@ Client_socket::Client_socket(const char* _ip, const char* _port){
 		/* failed to create socket */
 		perror("socket() failed");
 		sock = 0;
+		this->~Client_socket();
 		return ;
 	}
 	servaddr = *servinfo->ai_addr;
@@ -150,4 +130,32 @@ string addrstr(struct sockaddr* info){
 	uint16_t port = ntohs(ipv4->sin_port);
 
 	return string(ipstr) + ":" + to_string(port);
+}
+
+
+bool checkHostName(int hostname){ 
+    if(hostname == -1){ 
+        perror("gethostname"); 
+        return false;
+    } 
+	return true;
+} 
+  
+// Returns host information corresponding to host name 
+bool checkHostEntry(struct hostent * hostentry){ 
+    if(hostentry == NULL){ 
+        perror("gethostbyname"); 
+        return false;
+    } 
+	return true;
+} 
+  
+// Converts space-delimited IPv4 addresses 
+// to dotted-decimal format 
+bool checkIPbuffer(char *IPbuffer){ 
+    if(NULL == IPbuffer){ 
+        perror("inet_ntoa"); 
+        return false;
+    }
+	return true;
 }

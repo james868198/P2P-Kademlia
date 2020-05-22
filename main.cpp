@@ -48,7 +48,7 @@ int main(int argc, char* argv[]){
 	char cmd[1024] = "";
 	
 	while(RUNNING){
-		cin.getline (cmd,1024);
+		cin.getline(cmd, 1024);
 		// cin >> cmd;
 		// handle the command 
 		// if(cmd == "exit"){
@@ -59,11 +59,14 @@ int main(int argc, char* argv[]){
 		}else{
 			char ip[32] = "192.168.1.20";
 			char port[32] = "8888";
-			char sendbuf[1400] = "Hello from client"; 
+			char sendbuf[1400] = "Hello from "; 
+			sprintf(sendbuf+strlen(sendbuf), "%s:%s", local_ip, local_port);
 			sscanf(cmd, "%s %s %s", ip, port, sendbuf);
 			Client_socket client(ip, port);
-			if(client.valid()){
+			if(client){
 				client.send(sendbuf, strlen(sendbuf));
+			}else{
+				printf("hostname not found\n");
 			}
 		}
 		usleep(500);
