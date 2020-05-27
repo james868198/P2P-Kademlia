@@ -1,5 +1,5 @@
 !obj
 !output
 obj/*.o
-output/*
-
+output/main
+output/.DS_Store

@@ -68,7 +68,8 @@ int main(int argc, char* argv[]){
 			// }else{
 			// 	printf("hostname not found\n");
 			// }
-			char str[64] = "192.168.1.37:8899";
+			char str[64] = "";
+			sprintf(str, "%s:%s", bootstrap, local_port);
 			SHA_1 id(str);
 			RPC node(id, "PING", '0');
 			node.request();
