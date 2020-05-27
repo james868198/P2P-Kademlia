@@ -57,17 +57,21 @@ int main(int argc, char* argv[]){
 			pthread_join(server_ID, NULL);
 			break;
 		}else{
-			char ip[32] = "192.168.1.20";
-			char port[32] = "8888";
-			char sendbuf[1400] = "Hello from "; 
-			sprintf(sendbuf+strlen(sendbuf), "%s:%s", local_ip, local_port);
-			sscanf(cmd, "%s %s %s", ip, port, sendbuf);
-			Client_socket client(ip, port);
-			if(client){
-				client.send(sendbuf, strlen(sendbuf));
-			}else{
-				printf("hostname not found\n");
-			}
+			// char ip[32] = "192.168.1.20";
+			// char port[32] = "8888";
+			// char sendbuf[1400] = "Hello from "; 
+			// sprintf(sendbuf+strlen(sendbuf), "%s:%s", local_ip, local_port);
+			// sscanf(cmd, "%s %s %s", ip, port, sendbuf);
+			// Client_socket client(ip, port);
+			// if(client){
+			// 	client.send(sendbuf, strlen(sendbuf));
+			// }else{
+			// 	printf("hostname not found\n");
+			// }
+			char str[64] = "192.168.1.37:8899";
+			SHA_1 id(str);
+			RPC node(id, "PING", '0');
+			node.request();
 		}
 		usleep(500);
 	}
