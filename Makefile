@@ -1,5 +1,5 @@
 all: obj/main.o obj/UDP_socket.o obj/easy_file.o obj/kad_util.o
-	g++ -mmacosx-version-min=10.15 -std=c++17 -stdlib=libc++ -pthread \
+	g++ -std=c++17 -pthread \
 	-o output/main obj/main.o obj/UDP_socket.o obj/easy_file.o obj/kad_util.o -lssl -lcrypto
 	-cp output/main ../node/main
 
