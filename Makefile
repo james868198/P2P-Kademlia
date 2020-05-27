@@ -1,6 +1,6 @@
 all: obj/main.o obj/UDP_socket.o obj/easy_file.o obj/kad_util.o
 	g++ -std=c++17 -pthread -lssl -lcrypto -o output/main obj/main.o obj/UDP_socket.o obj/easy_file.o obj/kad_util.o
-	-cp output/main ../node1/main
+	-cp output/main ../node/main
 
 obj/main.o: main.cpp
 	g++ -o obj/main.o -std=c++17 -pthread -c main.cpp

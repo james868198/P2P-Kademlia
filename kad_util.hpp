@@ -2,6 +2,7 @@
 #define KAD_UTIL_H
 
 #include <iostream>
+#include <cstring>
 #include <string>
 #include <stdio.h>
 #include <fstream>
