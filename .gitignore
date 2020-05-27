@@ -1,4 +1,5 @@
-!/obj/
-!/output/
-/obj/*
-/output/*
+!obj
+!output
+obj/*.o
+output/*
+
