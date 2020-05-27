@@ -9,8 +9,7 @@
 #include "UDP_socket.hpp"
 #include "easy_file.hpp"
 #include <openssl/sha.h>
-#include <filesystem>
-namespace fs = std::filesystem;
+#include <sys/stat.h>	//mkdir()
 
 using namespace std;
 

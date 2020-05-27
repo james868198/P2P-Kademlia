@@ -44,7 +44,7 @@ void RPC::request(){
     sprintf(packet+strlen(packet), "%s", id.get());
 
     // get node ip and port from the routing tree
-    Client_socket node("192.168.1.37", "8899");
+    Client_socket node(bootstrap, local_port);
     node.send(packet, strlen(packet));
 
     printf("<< %s\n", packet);
@@ -90,17 +90,6 @@ void* serverThread(void* p){
 	return 0;
 }
 
-bool exists(const fs::path& p, fs::file_status s = fs::file_status{}){
-    std::cout << p;
-    if(fs::status_known(s) ? fs::exists(s) : fs::exists(p)){
-        std::cout << " exists\n";
-        return true;
-    }else{
-        std::cout << " does not exist\n";
-        return false;
-    }
-}
-
 bool get_config(const char* filename){
 	ifstream config;
 	config.open(filename);
@@ -130,13 +119,10 @@ bool get_config(const char* filename){
 			}
 		}
 		config.close();
-		if(!fs::exists(shared_folder)){
-			fs::create_directories(shared_folder);
-		}
-		if(!fs::exists(download_folder)){
-			fs::create_directories(download_folder);
-		}
-		
+    	int status = mkdir(shared_folder, 0777);
+    	// if(status!=0)
+    	mkdir(download_folder, 0777);
+
 		printf("-----------------------------------\n");
 		printf("    Configurations      \n");
 		printf("-----------------------------------\n");
