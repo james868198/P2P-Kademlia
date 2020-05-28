@@ -127,32 +127,61 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 		ret->data = new char [len];
 		memcpy(ret->data, pos, len);
 		// strcpy(ret->data, pos);
+
 	}
+
 	if(ret->ack == '0'){
 		pos = ret->data;
-		if(!strcmp(ret->msg, "STORE")){
-			if(!(n = strstr(pos, "|") - pos)) 	return NULL;
+		if(!strcmp(ret->msg, "PING")){
+			;
+		}else if(!strcmp(ret->msg, "STORE")){
+			if(!(n = strstr(pos, "|") - pos)){
+				delete [] ret->data;
+				delete ret;
+				return NULL;
+			} 	
 			char key[64] = "";
 			strncpy(key, pos, n); 		pos += n+1;
 			ret->key = SHA_1(SHA_1::to_hash(key));
-			if(!(n = strstr(pos, "|") - pos)) 	return NULL;
+			if(!(n = strstr(pos, "|") - pos)){
+				delete [] ret->data;
+				delete ret;
+				return NULL;
+			} 	
 			strncpy(ret->name, pos, n); 	pos += n+1;
-			if(pos > ret->data+len) 			return NULL;
+			if(pos > ret->data+len){
+				delete [] ret->data;
+				delete ret;
+				return NULL;
+			} 	
 			char num[64] = "";
 			strncpy(num, pos, len+ret->data-pos);
 			ret->len = atoi(num);
 
 		}else if(!strcmp(ret->msg, "FIND_NODE")){
-			if(!(n = strstr(pos, "|") - pos)) 	return NULL;
+			if(!(n = strstr(pos, "|") - pos)){
+				delete [] ret->data;
+				delete ret;
+				return NULL;
+			} 	
 			char nodeid[64] = "";
 			strncpy(nodeid, pos, n); 		pos += n+1;
 			ret->ID = SHA_1(SHA_1::to_hash(nodeid));
 		}else if(!strcmp(ret->msg, "FIND_VALUE")){
-			if(!(n = strstr(pos, "|") - pos)) 	return NULL;
+			if(!(n = strstr(pos, "|") - pos)){
+				delete [] ret->data;
+				delete ret;
+				return NULL;
+			} 	
 			char key[64] = "";
 			strncpy(key, pos, n); 		pos += n+1;
 			ret->key = SHA_1(SHA_1::to_hash(key));
 		}else{
+
+			delete [] ret->data;
+			delete ret;
+			return NULL;
+
 			printf("else\n");
 		}
 	}

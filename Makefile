@@ -1,4 +1,4 @@
-all: main
+all: config main
 	-cp output/main ../node/main
 
 main: obj/main.o obj/UDP_socket.o obj/easy_file.o obj/kad_util.o
@@ -17,7 +17,7 @@ obj/easy_file.o: easy_file.cpp easy_file.hpp
 obj/kad_util.o: kad_util.cpp kad_util.hpp
 	g++ -std=c++11 -o obj/kad_util.o -c kad_util.cpp
 
-debug:	debug/main.o debug/UDP_socket.o debug/easy_file.o debug/kad_util.o
+debug:	config debug/main.o debug/UDP_socket.o debug/easy_file.o debug/kad_util.o
 	g++ -std=c++11 -pthread \
 	-g -o output/main debug/main.o debug/UDP_socket.o debug/easy_file.o debug/kad_util.o -lssl -lcrypto
 
