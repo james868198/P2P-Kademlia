@@ -2,8 +2,9 @@
 
 bool RUNNING = true;
 
-
+// ==========================================================================================
 // configurations
+// ==========================================================================================
 char config_file[File_size] = "default.config";
 char bootstrap[IP_size] = "";
 char local_port[PORT_size] = "";
@@ -14,8 +15,264 @@ int local_alpha = 0;
 char shared_folder[File_size] = "Shared/";
 char download_folder[File_size] = "Download/";
 
-// 
+// ==========================================================================================
+RPC_Manager rpc_mng;
 
+
+// ==========================================================================================
+// RPC::
+// ==========================================================================================
+RPC::RPC(const SHA_1 _id, const char* _msg, const char _ack){
+	srcID = _id;
+	strcpy(msg, _msg);
+	ack = _ack;
+}
+
+void RPC::request(){
+	// PING 
+	char packet[512] = "";
+	sprintf(packet, "%s:%s:", local_ip, local_port);
+	sprintf(packet+strlen(packet), "%s", local_id.get());
+    sprintf(packet+strlen(packet), "|PING|%c|", ack);
+    sprintf(packet+strlen(packet), "%s", srcID.get());
+    sprintf(packet+strlen(packet), "|");
+    // get node ip and port from the routing tree
+    Client_socket node(bootstrap, local_port);
+    if(node){
+	    node.send(packet, strlen(packet));
+	    printf("<< %s\n", packet);
+    }
+}
+
+void RPC::response(){
+	ack = '1';
+	char packet[512] = "";
+	sprintf(packet, "%s:%s:", local_ip, local_port);
+	sprintf(packet+strlen(packet), "%s", local_id.get());
+    sprintf(packet+strlen(packet), "|PING|%c|", ack);
+    sprintf(packet+strlen(packet), "%s|", srcID.get());
+    // get node ip and port from the routing tree
+    Client_socket node(ip, port);
+    if(node){
+	    node.send(packet, strlen(packet));
+	    printf("<< %s\n", packet);
+    }
+}
+
+// ==========================================================================================
+// RPC_Manager::
+// ==========================================================================================
+void RPC_Manager::handle(const char* _buf, const int _len){
+
+	// shared_ptr<RPC> rpc = shared_ptr<RPC>(parse(_buf, _len), [](RPC* p){std::cout << "[deleter called]\n"; delete p;});
+	RPC* rpc = resolve(_buf, _len);
+	if(!rpc){
+		printf("rpc discarded.\n");
+		return;
+	}
+	// printf("%s\n%s\n", local_id.get(), rpc->dstID.get());
+	if(local_id != rpc->dstID){
+		// discard
+		printf("rpc discarded.\n");
+	}else{
+		printf("rpc received.\n");
+		if(rpc->ack == '0'){
+			RPC_list.push_back(rpc);
+			printf("list size : %d\n", (int)RPC_list.size());
+
+			pthread_t thread_ID = 0;
+			pthread_create(&thread_ID, NULL, (THREADFUNCPTR)RPCThread, (void*)rpc);
+		}else{
+
+		}
+	}
+}
+
+RPC* RPC_Manager::resolve(const char* _buf, const int _len){
+
+	// shared_ptr<RPC> ret(new RPC, [](RPC* p){std::cout << "[deleter called]\n"; delete p;});
+	// shared_ptr<RPC> ret = make_shared<RPC>();
+	RPC* ret = new RPC;
+	// ret->data = shared_ptr<char>(new char (_len));
+	
+	char srcKey[64] = "";
+	char dstKey[64] = "";
+
+	char* pos = (char*)_buf;
+	// char* tok = 0;
+	int n = 0;
+	int len = 0;
+	if(!(n = strstr(pos, ":") - pos)) return NULL;
+	strncpy(ret->ip, pos, n); 	pos += n+1;
+	
+	if(!(n = strstr(pos, ":") - pos)) return NULL;
+	strncpy(ret->port, pos, n); 	pos += n+1;
+	
+	if(!(n = strstr(pos, "|") - pos)) return NULL;
+	strncpy(srcKey, pos, n); 		pos += n+1;
+	ret->srcID = SHA_1(SHA_1::to_hash(srcKey));
+	
+	if(!(n = strstr(pos, "|") - pos)) return NULL;
+	strncpy(ret->msg, pos, n); 	pos += n+1;
+	
+	if(!(n = strstr(pos, "|") - pos)) return NULL;
+	strncpy(&ret->ack, pos, n); 	pos += n+1;
+	
+	if(!(n = strstr(pos, "|") - pos)) return NULL;
+	strncpy(dstKey, pos, n); 		pos += n+1;
+	ret->dstID = SHA_1(SHA_1::to_hash(dstKey));
+
+	len = _len+_buf-pos;
+	if(pos <= _buf+_len){
+		ret->data = new char [len];
+		memcpy(ret->data, pos, len);
+		// strcpy(ret->data, pos);
+	}
+	if(ret->ack == '0'){
+		pos = ret->data;
+		if(!strcmp(ret->msg, "STORE")){
+			if(!(n = strstr(pos, "|") - pos)) 	return NULL;
+			char key[64] = "";
+			strncpy(key, pos, n); 		pos += n+1;
+			ret->key = SHA_1(SHA_1::to_hash(key));
+			if(!(n = strstr(pos, "|") - pos)) 	return NULL;
+			strncpy(ret->name, pos, n); 	pos += n+1;
+			if(pos > ret->data+len) 			return NULL;
+			char num[64] = "";
+			strncpy(num, pos, len+ret->data-pos);
+			ret->len = atoi(num);
+
+		}else if(!strcmp(ret->msg, "FIND_NODE")){
+			if(!(n = strstr(pos, "|") - pos)) 	return NULL;
+			char nodeid[64] = "";
+			strncpy(nodeid, pos, n); 		pos += n+1;
+			ret->ID = SHA_1(SHA_1::to_hash(nodeid));
+		}else if(!strcmp(ret->msg, "FIND_VALUE")){
+			if(!(n = strstr(pos, "|") - pos)) 	return NULL;
+			char key[64] = "";
+			strncpy(key, pos, n); 		pos += n+1;
+			ret->key = SHA_1(SHA_1::to_hash(key));
+		}else{
+			printf("else\n");
+		}
+	}
+
+	// printf("%s\n", ret->ip);
+	// printf("%s\n", ret->port);
+	// printf("%s\n", ret->srcID.get());
+	// printf("%s\n", ret->msg);
+	// printf("%c\n", ret->ack);
+	// printf("%s\n", ret->dstID.get());
+	// printf("%s\n", ret->data);
+	return ret;
+}
+
+void* RPCThread(void * p){
+
+	// RPC_Manager RPC_mng = *(RPC_Manager*)p;
+	// shared_ptr<RPC> rpc((RPC*)p);
+	RPC* rpc = (RPC*)p;
+	// needs response
+	if(!strcmp(rpc->msg, "PING")){
+		rpc->response();
+	}else if(!strcmp(rpc->msg, "STORE")){
+		// wait for following msg
+		while(rpc->ack == '0')
+			usleep(1000);
+
+	}else if(!strcmp(rpc->msg, "FIND_NODE")){
+
+	}else if(!strcmp(rpc->msg, "FIND_VALUE")){
+
+	}else{
+		printf("else\n");
+	}
+	rpc_mng.remove(rpc);
+	// delete [] rpc->data;
+	// delete rpc;
+	return nullptr;
+}
+
+void RPC_Manager::remove(RPC*& rpc){
+	for(auto it=RPC_list.begin(); it!=RPC_list.end(); ++it){
+		if(*it == rpc){
+			RPC_list.erase(it);
+			break;
+		}
+	}
+	delete [] rpc->data;
+	delete rpc;
+}
+
+// void* RPC_Manager::RPCThread(void * p){
+// 	struct RPC_struct rpc_strc = *(struct RPC_struct*)p;
+// 	// RPC_Manager RPC_mng = *(RPC_Manager*)p;
+// 	// shared_ptr<RPC> rpc((RPC*)p);
+// 	// RPC* rpc = (RPC*)p;
+// 	// shared_ptr<RPC> rpc = RPC_mng.RPC_list.back();
+// 	shared_ptr<RPC> rpc = *(shared_ptr<RPC>*)rpc_strc.rpc;
+// 	RPC_Manager RPC_mng = *(RPC_Manager*)rpc_strc.RPC_mng;
+// 	if(rpc->ack == '0'){
+// 		// needs response
+// 		if(!strcmp(rpc->msg, "PING")){
+// 			rpc->response();
+// 		}else{
+// 			printf("else\n");
+// 		}
+// 	}else{
+// 		printf("response\n");
+// 	}
+// 	for(auto it=RPC_mng.RPC_list.begin(); it!=RPC_mng.RPC_list.end(); ++it){
+// 		if(*it == rpc){
+// 			RPC_mng.RPC_list.erase(it);
+// 		}
+// 	}
+// 	return nullptr;
+// }
+
+// ==========================================================================================
+// server
+// ==========================================================================================
+void* serverThread(void* p){
+
+	Server_socket server(local_port);
+	if(!server){
+		cerr << "Server initialization failed.\n";
+		RUNNING = false;
+		return 0;
+	}
+	strcpy(local_ip, server.get_ip());
+	printf("local ip  : %s\n", local_ip);
+
+	char str[64] = "";
+	sprintf(str, "%s:%s", local_ip, local_port);
+	local_id = SHA_1(str);
+
+	printf("Node ID   : %s\n", local_id.get());
+
+	char recvbuf[1400] = {};
+	int n = 0;
+	struct sockaddr cliaddr; 
+	
+
+	cout << "Waiting..." << endl;
+	while(RUNNING){
+		if((n = server.recv(recvbuf, &cliaddr, sizeof(recvbuf))) > 0){
+			// do something
+    		printf(">> %s\n", recvbuf); 
+    		rpc_mng.handle(recvbuf, n);
+
+		}else{
+			usleep(500);
+		}
+		
+	}
+	return 0;
+}
+
+// ==========================================================================================
+// SHA_1::
+// ==========================================================================================
 unsigned char* SHA_1::to_hash(const char* _key){
 	static unsigned char _hash[SHA_DIGEST_LENGTH];
 	for(int i=0; i<SHA_DIGEST_LENGTH; i++){
@@ -66,158 +323,9 @@ bool SHA_1::operator == (const unsigned char* a){
 	return true;
 }
 
-RPC::RPC(const SHA_1 _id, const char* _msg, const char _ack){
-	srcID = _id;
-	strcpy(msg, _msg);
-	ack = _ack;
-}
-
-void RPC::request(){
-	// PING 
-	char packet[512] = "";
-	sprintf(packet, "%s:%s:", local_ip, local_port);
-	sprintf(packet+strlen(packet), "%s", local_id.get());
-    sprintf(packet+strlen(packet), "|PING|%c|", ack);
-    sprintf(packet+strlen(packet), "%s", srcID.get());
-    sprintf(packet+strlen(packet), "|");
-    // get node ip and port from the routing tree
-    Client_socket node(bootstrap, local_port);
-    node.send(packet, strlen(packet));
-
-    printf("<< %s\n", packet);
-}
-
-void RPC::response(){
-	ack = '1';
-	char packet[512] = "";
-	sprintf(packet, "%s:%s:", local_ip, local_port);
-	sprintf(packet+strlen(packet), "%s", local_id.get());
-    sprintf(packet+strlen(packet), "|PING|%c|", ack);
-    sprintf(packet+strlen(packet), "%s|", srcID.get());
-    // get node ip and port from the routing tree
-    Client_socket node(ip, port);
-    node.send(packet, strlen(packet));
-
-    printf("<< %s\n", packet);
-}
-
-// vector<shared_ptr<RPC>> RPC_Manager::RPC_list = vector<shared_ptr<RPC>>();
-
-shared_ptr<RPC> RPC_Manager::parse(const char* _buf, const int _len){
-
-	shared_ptr<RPC> ret(new RPC());
-	ret->data = shared_ptr<char>(new char (_len));
-	char srcKey[64] = "";
-	char dstKey[64] = "";
-
-	char* pos = (char*)_buf;
-	char* tok = 0;
-	int n = 0;
-
-	if(pos <= _buf+_len){
-		n = strstr(pos, ":") - pos; strncpy(ret->ip, pos, n); 	pos += n+1;
-	}
-	if(pos <= _buf+_len){
-		n = strstr(pos, ":") - pos; strncpy(ret->port, pos, n); 	pos += n+1;
-	}
-	if(pos <= _buf+_len){
-		n = strstr(pos, "|") - pos; strncpy(srcKey, pos, n); 	pos += n+1;
-		ret->srcID = SHA_1(SHA_1::to_hash(srcKey));
-	}
-	if(pos <= _buf+_len){
-		n = strstr(pos, "|") - pos; strncpy(ret->msg, pos, n); 	pos += n+1;
-	}
-	if(pos <= _buf+_len){
-		n = strstr(pos, "|") - pos; strncpy(&ret->ack, pos, n); 	pos += n+1;
-	}
-	if(pos <= _buf+_len){
-		n = strstr(pos, "|") - pos; strncpy(dstKey, pos, n); 	pos += n+1;
-		ret->dstID = SHA_1(SHA_1::to_hash(dstKey));
-	}
-	if(pos <= _buf+_len){
-		strncpy(ret->data.get(), pos, n);
-	}
-
-	// printf("%s\n", ret->ip);
-	// printf("%s\n", ret->port);
-	// printf("%s\n", ret->srcID.get());
-	// printf("%s\n", ret->msg);
-	// printf("%c\n", ret->ack);
-	// printf("%s\n", ret->dstID.get());
-	// printf("%s\n", ret->data.get());
-	return ret;
-}
-
-void* RPC_Manager::RPCThread(void * p){
-	// RPC_Manager RPC_mng = *(RPC_Manager*)p;
-	// shared_ptr<RPC> rpc((RPC*)p);
-	RPC* rpc = (RPC*)p;
-	// shared_ptr<RPC> rpc = RPC_mng.RPC_list.back();
-	if(rpc->ack == '0'){
-		// needs response
-		if(!strcmp(rpc->msg, "PING")){
-			rpc->response();
-		}else{
-			printf("else\n");
-		}
-	}else{
-		printf("response\n");
-	}
-	return nullptr;
-}
-
-void RPC_Manager::handle(const char* _buf, const int _len){
-
-	shared_ptr<RPC> rpc = parse(_buf, _len);
-	// printf("%s\n%s\n", local_id.get(), rpc->dstID.get());
-	if(local_id != rpc->dstID){
-		// discard
-		printf("rpc discarded.\n");
-	}else{
-		printf("rpc received.\n");
-		RPC_list.push_back(rpc);
-		pthread_t thread_ID = 0;
-		pthread_create(&thread_ID, NULL, (THREADFUNCPTR)&RPC_Manager::RPCThread, (void*)rpc.get());
-	}
-}
-
-void* serverThread(void* p){
-
-	Server_socket server(local_port);
-	if(!server){
-		cerr << "Server initialization failed.\n";
-		RUNNING = false;
-		return 0;
-	}
-	strcpy(local_ip, server.get_ip());
-	printf("local ip  : %s\n", local_ip);
-
-	char str[64] = "";
-	sprintf(str, "%s:%s", local_ip, local_port);
-	local_id = SHA_1(str);
-
-	printf("Node ID   : %s\n", local_id.get());
-
-	char recvbuf[1400] = {};
-	int n = 0;
-	struct sockaddr cliaddr; 
-	RPC_Manager rpc_mng;
-
-	cout << "Waiting..." << endl;
-	while(RUNNING){
-		if((n = server.recv(recvbuf, &cliaddr, sizeof(recvbuf))) > 0){
-			// do something
-    		printf(">> %s\n", recvbuf); 
-    		rpc_mng.handle(recvbuf, n);
-
-		}else{
-			usleep(500);
-		}
-		
-	}
-	return 0;
-}
-
+// ==========================================================================================
+// uitl::
+// ==========================================================================================
 bool get_config(const char* filename){
 	ifstream config;
 	config.open(filename);

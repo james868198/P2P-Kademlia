@@ -1,5 +1,7 @@
 !obj
 !output
+!debug
+debug/*.o
 obj/*.o
 output/main
 output/.DS_Store

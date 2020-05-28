@@ -22,9 +22,9 @@ using namespace std;
 
 class Server_socket{
 private:	
-	int sock;
-	char ip[256];
-	char port[32];
+	int sock = 0;
+	char ip[256] = "";
+	char port[32] = "";
 	struct sockaddr servaddr;
 
 public:
@@ -41,9 +41,9 @@ public:
 
 class Client_socket{
 private:	
-	int sock;
-	char ip[256];
-	char port[32];
+	int sock = 0;
+	char ip[256] = "";
+	char port[32] = "";
 	struct sockaddr servaddr;
 
 public:

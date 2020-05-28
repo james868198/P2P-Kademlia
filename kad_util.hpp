@@ -47,13 +47,23 @@ private:
 	time_t tx_time;
 	time_t rx_time;
 public:
-	char ip[IP_size];
-	char port[PORT_size];
+	char ip[IP_size] = "";
+	char port[PORT_size] = "";
 	SHA_1 srcID;
 	SHA_1 dstID;
 	char msg[32] = "";
 	char ack;
-	shared_ptr<char> data;
+	// shared_ptr<char> data;
+	char* data;
+	// key, value
+	SHA_1 key;
+	// filename
+	char name[256] = "";
+	// file length
+	int len = 0;
+	// node id
+	SHA_1 ID;
+
 	RPC(){};
 	RPC(const SHA_1 _id, const char* _msg, const char _ack);
 
@@ -64,20 +74,22 @@ public:
 
 class RPC_Manager{
 private:
-	vector<shared_ptr<RPC>> RPC_list;
-	shared_ptr<RPC> parse(const char* _buf, const int _len);
+	vector<RPC*> RPC_list;
+	// shared_ptr<RPC> parse(const char* _buf, const int _len);
+	RPC* resolve(const char* _buf, const int _len);
 public:
 	RPC_Manager(){};
 
 	void handle(const char* _buf, const int _len);
-	static void* RPCThread(void *);
+	// static void* RPCThread(void *);
+	void remove(RPC*& rpc);
 };
 
 void help();
 void print_time(char* result);
 bool get_config(const char* filename);
 void* serverThread(void* p);
-
+void* RPCThread(void * p);
 // variables
 
 extern bool RUNNING;
@@ -91,5 +103,7 @@ extern int local_k;
 extern int local_alpha;
 extern char shared_folder[256];
 extern char download_folder[256];
+
+extern RPC_Manager rpc_mng;
 
 // #endif
