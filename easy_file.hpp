@@ -9,7 +9,7 @@
 using namespace std;
 
 class File{
-
+private:
 	fstream file;
 
 public:

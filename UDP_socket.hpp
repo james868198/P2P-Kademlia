@@ -21,7 +21,7 @@ using namespace std;
 
 
 class Server_socket{
-	
+private:	
 	int sock;
 	char ip[256];
 	char port[32];
@@ -40,7 +40,7 @@ public:
 };
 
 class Client_socket{
-	
+private:	
 	int sock;
 	char ip[256];
 	char port[32];
