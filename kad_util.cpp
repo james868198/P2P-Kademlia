@@ -1,29 +1,36 @@
 #include "kad_util.hpp"
+#include "kad_bucket.hpp"
 
 bool RUNNING = true;
 
 // ==========================================================================================
 // configurations
 // ==========================================================================================
-char config_file[File_size] = "default.config";
-char bootstrap[IP_size] = "";
-char local_port[PORT_size] = "";
-char local_ip[IP_size] = "";
-SHA_1 local_id;
-int local_k = 0;
-int local_alpha = 0;
-char shared_folder[File_size] = "Shared/";
-char download_folder[File_size] = "Download/";
+char 	config_file[File_size] 		= "default.config";
+char 	boot_ip[IP_size] 			= "";
+char 	boot_port[PORT_size] 		= "";
+char 	local_ip[IP_size] 			= "";
+char 	local_port[PORT_size] 		= "";
+SHA_1 	local_id;
+int 	local_k 					= 0;
+int 	local_alpha 				= 0;
+char 	shared_folder[File_size] 	= "Shared/";
+char 	download_folder[File_size] 	= "Download/";
 
 // ==========================================================================================
-RPC_Manager rpc_mng;
-
 
 // ==========================================================================================
 // RPC::
 // ==========================================================================================
-RPC::RPC(const SHA_1 _id, const char* _msg, const char _ack){
-	srcID = _id;
+RPC::RPC(const SHA_1& _id, const char* _msg, const char _ack){
+	dstID = _id;
+	strcpy(msg, _msg);
+	ack = _ack;
+}
+
+RPC::RPC(const char* _ipp, const char* _msg, const char _ack){
+	
+	dstID = SHA_1(_ipp);
 	strcpy(msg, _msg);
 	ack = _ack;
 }
@@ -34,29 +41,45 @@ void RPC::request(){
 	sprintf(packet, "%s:%s:", local_ip, local_port);
 	sprintf(packet+strlen(packet), "%s", local_id.get());
     sprintf(packet+strlen(packet), "|PING|%c|", ack);
-    sprintf(packet+strlen(packet), "%s", srcID.get());
+    sprintf(packet+strlen(packet), "%s", dstID.get());
     sprintf(packet+strlen(packet), "|");
     // get node ip and port from the routing tree
-    Client_socket node(bootstrap, local_port);
-    if(node){
-	    node.send(packet, strlen(packet));
-	    printf("<< %s\n", packet);
+    vector<Node> list = dht.get_node(dstID);
+    if(list.size()){
+    	Client_socket node(list.back().ip, list.back().port);
+	    if(node){
+		    node.send(packet, strlen(packet));
+		    printf("<< %s\n", packet);
+	    }
     }
+    
 }
 
-void RPC::response(){
-	ack = '1';
-	char packet[512] = "";
-	sprintf(packet, "%s:%s:", local_ip, local_port);
-	sprintf(packet+strlen(packet), "%s", local_id.get());
-    sprintf(packet+strlen(packet), "|PING|%c|", ack);
-    sprintf(packet+strlen(packet), "%s|", srcID.get());
-    // get node ip and port from the routing tree
-    Client_socket node(ip, port);
-    if(node){
-	    node.send(packet, strlen(packet));
-	    printf("<< %s\n", packet);
-    }
+void RPC::respond(){
+	pthread_create(&thread_ID, NULL, (THREADFUNCPTR)RPCThread, (void*)this);
+}
+
+void RPC::print(){
+	printf("ip    :%s\n", ip);
+	printf("port. :%s\n", port);
+	printf("srcID :%s\n", srcID.get());
+	printf("msg   :%s\n", msg);
+	printf("ack   :%c\n", ack);
+	printf("dstID :%s\n", dstID.get());
+	printf("data  :%s\n", data);
+}
+
+bool RPC::match(RPC& _rpc){
+	if(srcID != _rpc.dstID){
+		return false;
+	}
+	if(dstID != _rpc.srcID){
+		return false;
+	}
+	if(strcmp(msg, _rpc.msg)){
+		return false;
+	}
+	return true;
 }
 
 // ==========================================================================================
@@ -64,13 +87,11 @@ void RPC::response(){
 // ==========================================================================================
 void RPC_Manager::handle(const char* _buf, const int _len){
 
-	// shared_ptr<RPC> rpc = shared_ptr<RPC>(parse(_buf, _len), [](RPC* p){std::cout << "[deleter called]\n"; delete p;});
 	RPC* rpc = resolve(_buf, _len);
 	if(!rpc){
 		printf("rpc discarded.\n");
 		return;
 	}
-	// printf("%s\n%s\n", local_id.get(), rpc->dstID.get());
 	if(local_id != rpc->dstID){
 		// discard
 		printf("rpc discarded.\n");
@@ -79,9 +100,7 @@ void RPC_Manager::handle(const char* _buf, const int _len){
 		if(rpc->ack == '0'){
 			RPC_list.push_back(rpc);
 			printf("list size : %d\n", (int)RPC_list.size());
-
-			pthread_t thread_ID = 0;
-			pthread_create(&thread_ID, NULL, (THREADFUNCPTR)RPCThread, (void*)rpc);
+			rpc->respond();
 		}else{
 
 		}
@@ -90,18 +109,14 @@ void RPC_Manager::handle(const char* _buf, const int _len){
 
 RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 
-	// shared_ptr<RPC> ret(new RPC, [](RPC* p){std::cout << "[deleter called]\n"; delete p;});
-	// shared_ptr<RPC> ret = make_shared<RPC>();
 	RPC* ret = new RPC;
-	// ret->data = shared_ptr<char>(new char (_len));
-	
 	char srcKey[64] = "";
 	char dstKey[64] = "";
 
 	char* pos = (char*)_buf;
 	// char* tok = 0;
 	int n = 0;
-	int len = 0;
+	
 	if(!(n = strstr(pos, ":") - pos)) return NULL;
 	strncpy(ret->ip, pos, n); 	pos += n+1;
 	
@@ -122,21 +137,13 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 	strncpy(dstKey, pos, n); 		pos += n+1;
 	ret->dstID = SHA_1(SHA_1::to_hash(dstKey));
 
-	len = _len+_buf-pos;
-	if(pos <= _buf+_len){
-		ret->data = new char [len];
-		memcpy(ret->data, pos, len);
-		// strcpy(ret->data, pos);
-
-	}
 
 	if(ret->ack == '0'){
-		pos = ret->data;
+		// pos = ret->data;
 		if(!strcmp(ret->msg, "PING")){
 			;
 		}else if(!strcmp(ret->msg, "STORE")){
 			if(!(n = strstr(pos, "|") - pos)){
-				delete [] ret->data;
 				delete ret;
 				return NULL;
 			} 	
@@ -144,23 +151,19 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 			strncpy(key, pos, n); 		pos += n+1;
 			ret->key = SHA_1(SHA_1::to_hash(key));
 			if(!(n = strstr(pos, "|") - pos)){
-				delete [] ret->data;
 				delete ret;
 				return NULL;
 			} 	
 			strncpy(ret->name, pos, n); 	pos += n+1;
-			if(pos > ret->data+len){
-				delete [] ret->data;
+			if(pos > _buf+_len){
 				delete ret;
 				return NULL;
 			} 	
 			char num[64] = "";
-			strncpy(num, pos, len+ret->data-pos);
+			strncpy(num, pos, _buf+_len-pos);
 			ret->len = atoi(num);
-
 		}else if(!strcmp(ret->msg, "FIND_NODE")){
 			if(!(n = strstr(pos, "|") - pos)){
-				delete [] ret->data;
 				delete ret;
 				return NULL;
 			} 	
@@ -169,7 +172,6 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 			ret->ID = SHA_1(SHA_1::to_hash(nodeid));
 		}else if(!strcmp(ret->msg, "FIND_VALUE")){
 			if(!(n = strstr(pos, "|") - pos)){
-				delete [] ret->data;
 				delete ret;
 				return NULL;
 			} 	
@@ -177,33 +179,71 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 			strncpy(key, pos, n); 		pos += n+1;
 			ret->key = SHA_1(SHA_1::to_hash(key));
 		}else{
-
-			delete [] ret->data;
 			delete ret;
 			return NULL;
 
 			printf("else\n");
 		}
+	}else if(ret->ack == '1'){
+		if(!strcmp(ret->msg, "PING")){
+			;
+		}else if(!strcmp(ret->msg, "STORE")){
+			if(!(n = strstr(pos, "|") - pos)){
+				delete ret;
+				return NULL;
+			} 	
+			char key[64] = "";
+			strncpy(key, pos, n); 		pos += n+1;
+			ret->key = SHA_1(SHA_1::to_hash(key));
+		}else if(!strcmp(ret->msg, "FIND_NODE")){
+			if(!(n = strstr(pos, "|") - pos)){
+				delete ret;
+				return NULL;
+			} 	
+			char nodeid[64] = "";
+			strncpy(nodeid, pos, n); 		pos += n+1;
+			ret->ID = SHA_1(SHA_1::to_hash(nodeid));
+		}else if(!strcmp(ret->msg, "FIND_VALUE")){
+			if(!(n = strstr(pos, "|") - pos)){
+				delete ret;
+				return NULL;
+			} 	
+			char key[64] = "";
+			strncpy(key, pos, n); 		pos += n+1;
+			ret->key = SHA_1(SHA_1::to_hash(key));
+		}else{
+			delete ret;
+			return NULL;
+		}
+		int len = _len+_buf-pos;
+		if(len > 0){
+			ret->data = new char [len];
+			memcpy(ret->data, pos, len);
+			// strcpy(ret->data, pos);
+			printf("new [%d]\n", len);
+		}
 	}
-
-	// printf("%s\n", ret->ip);
-	// printf("%s\n", ret->port);
-	// printf("%s\n", ret->srcID.get());
-	// printf("%s\n", ret->msg);
-	// printf("%c\n", ret->ack);
-	// printf("%s\n", ret->dstID.get());
-	// printf("%s\n", ret->data);
+	// ret->print();
 	return ret;
 }
 
 void* RPCThread(void * p){
 
-	// RPC_Manager RPC_mng = *(RPC_Manager*)p;
-	// shared_ptr<RPC> rpc((RPC*)p);
 	RPC* rpc = (RPC*)p;
 	// needs response
 	if(!strcmp(rpc->msg, "PING")){
-		rpc->response();
+		rpc->ack = '1';
+		char packet[512] = "";
+		sprintf(packet, "%s:%s:", local_ip, local_port);
+		sprintf(packet+strlen(packet), "%s", local_id.get());
+	    sprintf(packet+strlen(packet), "|PING|%c|", rpc->ack);
+	    sprintf(packet+strlen(packet), "%s|", rpc->srcID.get());
+	    // get node ip and port from the routing tree
+	    Client_socket node(rpc->ip, rpc->port);
+	    if(node){
+		    node.send(packet, strlen(packet));
+		    printf("<< %s\n", packet);
+	    }
 	}else if(!strcmp(rpc->msg, "STORE")){
 		// wait for following msg
 		while(rpc->ack == '0')
@@ -217,8 +257,6 @@ void* RPCThread(void * p){
 		printf("else\n");
 	}
 	rpc_mng.remove(rpc);
-	// delete [] rpc->data;
-	// delete rpc;
 	return nullptr;
 }
 
@@ -233,57 +271,15 @@ void RPC_Manager::remove(RPC*& rpc){
 	delete rpc;
 }
 
-// void* RPC_Manager::RPCThread(void * p){
-// 	struct RPC_struct rpc_strc = *(struct RPC_struct*)p;
-// 	// RPC_Manager RPC_mng = *(RPC_Manager*)p;
-// 	// shared_ptr<RPC> rpc((RPC*)p);
-// 	// RPC* rpc = (RPC*)p;
-// 	// shared_ptr<RPC> rpc = RPC_mng.RPC_list.back();
-// 	shared_ptr<RPC> rpc = *(shared_ptr<RPC>*)rpc_strc.rpc;
-// 	RPC_Manager RPC_mng = *(RPC_Manager*)rpc_strc.RPC_mng;
-// 	if(rpc->ack == '0'){
-// 		// needs response
-// 		if(!strcmp(rpc->msg, "PING")){
-// 			rpc->response();
-// 		}else{
-// 			printf("else\n");
-// 		}
-// 	}else{
-// 		printf("response\n");
-// 	}
-// 	for(auto it=RPC_mng.RPC_list.begin(); it!=RPC_mng.RPC_list.end(); ++it){
-// 		if(*it == rpc){
-// 			RPC_mng.RPC_list.erase(it);
-// 		}
-// 	}
-// 	return nullptr;
-// }
-
 // ==========================================================================================
 // server
 // ==========================================================================================
 void* serverThread(void* p){
 
-	Server_socket server(local_port);
-	if(!server){
-		cerr << "Server initialization failed.\n";
-		RUNNING = false;
-		return 0;
-	}
-	strcpy(local_ip, server.get_ip());
-	printf("local ip  : %s\n", local_ip);
-
-	char str[64] = "";
-	sprintf(str, "%s:%s", local_ip, local_port);
-	local_id = SHA_1(str);
-
-	printf("Node ID   : %s\n", local_id.get());
-
 	char recvbuf[1400] = {};
 	int n = 0;
 	struct sockaddr cliaddr; 
 	
-
 	cout << "Waiting..." << endl;
 	while(RUNNING){
 		if((n = server.recv(recvbuf, &cliaddr, sizeof(recvbuf))) > 0){
@@ -334,7 +330,7 @@ void SHA_1::set(const unsigned char* _hash){
     }
 }
 
-bool SHA_1::operator == (const SHA_1& a){
+bool SHA_1::operator == (const SHA_1& a) const{
 	for(int i=0; i<SHA_DIGEST_LENGTH; ++i){
 		if(a.hash[i] != this->hash[i]){
 			return false;
@@ -343,7 +339,7 @@ bool SHA_1::operator == (const SHA_1& a){
 	return true;
 }
 
-bool SHA_1::operator == (const unsigned char* a){
+bool SHA_1::operator == (const unsigned char* a) const{
 	for(int i=0; i<SHA_DIGEST_LENGTH; ++i){
 		if(a[i] != this->hash[i]){
 			return false;
@@ -362,14 +358,16 @@ bool get_config(const char* filename){
 	    cerr << "Cannot open config file.\n";
 	    return false;
 	}else{
-		char str[256] = "";
+
 		string attr = "";
 		char val[256] = "";
 		
 		while(config >> attr >> val){
 			if(attr == "bootstrap"){
-				strcpy(bootstrap, val);
+				strcpy(boot_ip, val);
 			}else if(attr == "port"){
+				strcpy(boot_port, val);
+			}else if(attr == "local_port"){
 				strcpy(local_port, val);
 			}else if(attr == "k"){
 				local_k = atoi(val);
@@ -383,20 +381,42 @@ bool get_config(const char* filename){
 				;
 			}
 		}
-		config.close();
-    	int status = mkdir(shared_folder, 0777);
-    	// if(status!=0)
-    	mkdir(download_folder, 0777);
 
+		config.close();
+    	
 		printf("-----------------------------------\n");
 		printf("    Configurations      \n");
 		printf("-----------------------------------\n");
-		printf("bootstrap : %s\n", bootstrap);
-		printf("port      : %s\n", local_port);
+		printf("bootstrap : %s\n", boot_ip);
+		printf("port      : %s\n", boot_port);
 		printf("k         : %d\n", local_k);
+
+		server = Server_socket(local_port);
+		if(!server){
+			cerr << "Server initialization failed.\n";
+			RUNNING = false;
+			return 0;
+		}
+		strcpy(local_ip, server.get_ip());
+		printf("local ip  : %s\n", local_ip);
+		printf("local port: %s\n", local_port);
+		
+		local_id = SHA_1(stripp(local_ip, local_port));
+
+		printf("Node ID   : %s\n", local_id.get());
+
+		// deploy the DHT and config the node
+		dht = DHT(local_id);
 
 	}
 	return true;
+}
+
+const char* stripp(const char* _ip, const char* _port){
+	static char str[64] = "";
+	memset(str, 0, sizeof(str));
+	sprintf(str, "%s:%s", _ip, _port);
+	return str;
 }
 
 void help(){

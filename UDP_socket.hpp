@@ -28,6 +28,7 @@ private:
 	struct sockaddr servaddr;
 
 public:
+	Server_socket(){};
 	Server_socket(const char* _port);
 
 	int recv(char* recvbuf, struct sockaddr* cliaddr, int len);

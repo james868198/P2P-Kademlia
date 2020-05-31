@@ -1,9 +1,9 @@
-all: config main
+all: print config main
 	-cp output/main ../node/main
 
-main: obj/main.o obj/UDP_socket.o obj/easy_file.o obj/kad_util.o
-	g++ -std=c++11 -pthread \
-	-o output/main obj/main.o obj/UDP_socket.o obj/easy_file.o obj/kad_util.o -lssl -lcrypto
+main: obj/main.o obj/UDP_socket.o obj/easy_file.o obj/kad_util.o obj/kad_bucket.o
+	g++ -std=c++11 -pthread -o output/main \
+	obj/main.o obj/UDP_socket.o obj/easy_file.o obj/kad_bucket.o  obj/kad_util.o -lssl -lcrypto
 
 obj/main.o: main.cpp
 	g++ -std=c++11 -pthread -o obj/main.o -c main.cpp
@@ -17,10 +17,15 @@ obj/easy_file.o: easy_file.cpp easy_file.hpp
 obj/kad_util.o: kad_util.cpp kad_util.hpp
 	g++ -std=c++11 -o obj/kad_util.o -c kad_util.cpp
 
-debug:	config debug/main.o debug/UDP_socket.o debug/easy_file.o debug/kad_util.o
-	g++ -std=c++11 -pthread \
-	-g -o output/main debug/main.o debug/UDP_socket.o debug/easy_file.o debug/kad_util.o -lssl -lcrypto
+obj/kad_bucket.o: kad_bucket.cpp kad_bucket.hpp
+	g++ -std=c++11 -o obj/kad_bucket.o -c kad_bucket.cpp
 
+
+debug:	config debug/main.o debug/UDP_socket.o debug/easy_file.o debug/kad_util.o debug/kad_bucket.o
+	g++ -std=c++11 -pthread -g -o output/main \
+	debug/main.o debug/UDP_socket.o debug/easy_file.o debug/kad_util.o debug/kad_bucket.o -lssl -lcrypto
+	-cp output/main ../node/main
+	
 debug/main.o: main.cpp
 	g++ -std=c++11 -pthread -g -o debug/main.o -c main.cpp
 
@@ -32,6 +37,14 @@ debug/easy_file.o: easy_file.cpp easy_file.hpp
 
 debug/kad_util.o: kad_util.cpp kad_util.hpp
 	g++ -std=c++11 -g -o debug/kad_util.o -c kad_util.cpp
+
+debug/kad_bucket.o: kad_bucket.cpp kad_bucket.hpp
+	g++ -std=c++11 -g -o debug/kad_bucket.o -c kad_bucket.cpp
+
+print:
+	-@echo ===============================================
+	-@echo Start Compiling
+	-@echo ===============================================
 
 config:
 	-mkdir -p obj

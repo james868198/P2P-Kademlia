@@ -5,7 +5,17 @@
 // P2P-Kademlia
 
 #include "kad_util.hpp"
+#include "kad_bucket.hpp"
 
+// ==========================================================================================
+// global objects
+// ==========================================================================================
+RPC_Manager rpc_mng;
+DHT dht;
+Server_socket server;
+
+
+void cmd_handle(const char* _cmd);
 
 int main(int argc, char* argv[]){
 	
@@ -38,7 +48,7 @@ int main(int argc, char* argv[]){
 		return 1;
 	}
 
-	// create tcp server
+	// create udp server
 	pthread_t server_ID = 0;
 	pthread_create(&server_ID, NULL, serverThread, NULL);
 	usleep(100000);
@@ -49,30 +59,12 @@ int main(int argc, char* argv[]){
 	
 	while(RUNNING){
 		cin.getline(cmd, 1024);
-		// cin >> cmd;
-		// handle the command 
-		// if(cmd == "exit"){
 		if(!strcmp(cmd, "exit")){
 			RUNNING = false;
-			pthread_join(server_ID, NULL);
+			// pthread_join(server_ID, NULL);
 			break;
 		}else{
-			// char ip[32] = "192.168.1.20";
-			// char port[32] = "8888";
-			// char sendbuf[1400] = "Hello from "; 
-			// sprintf(sendbuf+strlen(sendbuf), "%s:%s", local_ip, local_port);
-			// sscanf(cmd, "%s %s %s", ip, port, sendbuf);
-			// Client_socket client(ip, port);
-			// if(client){
-			// 	client.send(sendbuf, strlen(sendbuf));
-			// }else{
-			// 	printf("hostname not found\n");
-			// }
-			char str[64] = "";
-			sprintf(str, "%s:%s", bootstrap, local_port);
-			SHA_1 id(str);
-			RPC node(id, "PING", '0');
-			node.request();
+			cmd_handle(cmd);
 		}
 		usleep(500);
 	}
@@ -80,4 +72,32 @@ int main(int argc, char* argv[]){
 	printf("\n\ndone.\n");
 	return 0;
 }
+
+void cmd_handle(const char* _cmd){
+	char* pos = (char*)_cmd;
+	char* tok = 0;
+	int n = 0;
+	tok = strstr(pos, " ");
+	if(!tok){
+		if(!strcmp(_cmd, "ls")){
+			dht.ls_file();
+		}else{
+
+		}
+	}else{
+		n = tok - pos;
+		char cmd[1024] = "";
+		strncpy(cmd, pos, n); 	pos += n+1;
+		if(!strcmp(cmd, "ping")){
+			// SHA_1 id(pos);
+			RPC node(pos, "PING", '0');
+			node.request();
+		}
+	}
+}
+
+
+
+
+
 

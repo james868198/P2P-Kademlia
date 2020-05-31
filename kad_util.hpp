@@ -1,5 +1,5 @@
-// #ifndef KAD_UTIL_H
-// #define KAD_UTIL_H
+#ifndef KAD_UTIL_H
+#define KAD_UTIL_H
 
 #include <iostream>
 #include <cstring>
@@ -9,9 +9,10 @@
 #include "UDP_socket.hpp"
 #include "easy_file.hpp"
 #include <openssl/sha.h>
-#include <sys/stat.h>	//mkdir()
+
 #include <vector>
 #include <memory>		//unique_ptr
+
 using namespace std;
 
 
@@ -21,6 +22,9 @@ using namespace std;
 #define Head_size 0
 
 typedef void * (*THREADFUNCPTR)(void *);
+
+class K_Buck;
+class DHT;
 
 
 class SHA_1{
@@ -34,11 +38,15 @@ public:
 	SHA_1(const unsigned char* _hash);
 
 	void set(const unsigned char* _hash);
-	char* get(){ return key; };
-	bool operator == (const SHA_1& a);
-	bool operator != (const SHA_1& a){ return !(*this == a); };
-	bool operator == (const unsigned char* a);
-	bool operator != (const unsigned char* a){ return !(*this == a); };
+	const char* get() const { return key; };
+	unsigned char* get_hash() const { return (unsigned char*)hash; };
+
+	bool operator == (const SHA_1& a) const;
+	bool operator != (const SHA_1& a) const { return !(*this == a); };
+	bool operator == (const unsigned char* a) const;
+	bool operator != (const unsigned char* a) const { return !(*this == a); };
+
+
 	static unsigned char* to_hash(const char* _key);
 };
 
@@ -46,36 +54,36 @@ class RPC{
 private:
 	time_t tx_time;
 	time_t rx_time;
+
+	pthread_t thread_ID = 0;
 public:
-	char ip[IP_size] = "";
-	char port[PORT_size] = "";
-	SHA_1 srcID;
-	SHA_1 dstID;
-	char msg[32] = "";
-	char ack;
-	// shared_ptr<char> data;
-	char* data;
-	// key, value
-	SHA_1 key;
-	// filename
-	char name[256] = "";
-	// file length
-	int len = 0;
-	// node id
-	SHA_1 ID;
+	char 	ip[IP_size] = "";
+	char 	port[PORT_size] = "";
+	SHA_1 	srcID;
+	SHA_1 	dstID;
+	char 	msg[32] = "";
+	char 	ack;
+	char* 	data;
+	SHA_1 	key;	// key, value
+	char 	name[256] = "";	// filename
+	int 	len = 0;	// file length
+	SHA_1 	ID;	// node id
+
+	RPC* 	response = 0;
 
 	RPC(){};
-	RPC(const SHA_1 _id, const char* _msg, const char _ack);
+	RPC(const SHA_1& _id, const char* _msg, const char _ack);
+	RPC(const char* _ipp, const char* _msg, const char _ack);
 
 	void request();
-	void response();
-
+	void respond();
+	void print();
+	bool match(RPC& _rpc);
 };
 
 class RPC_Manager{
 private:
 	vector<RPC*> RPC_list;
-	// shared_ptr<RPC> parse(const char* _buf, const int _len);
 	RPC* resolve(const char* _buf, const int _len);
 public:
 	RPC_Manager(){};
@@ -90,20 +98,26 @@ void print_time(char* result);
 bool get_config(const char* filename);
 void* serverThread(void* p);
 void* RPCThread(void * p);
+const char* stripp(const char* _ip, const char* _port);
+
 // variables
 
 extern bool RUNNING;
 
-extern char config_file[256];
-extern char bootstrap[32];
-extern char local_port[32];
-extern char local_ip[32];
+extern char config_file[File_size];
+extern char boot_ip[IP_size];
+extern char boot_port[PORT_size];
+extern char local_port[PORT_size];
+extern char local_ip[IP_size];
 extern SHA_1 local_id;
 extern int local_k;
 extern int local_alpha;
-extern char shared_folder[256];
-extern char download_folder[256];
+extern char shared_folder[File_size];
+extern char download_folder[File_size];
 
+// extern RPC_Manager rpc_mng;
 extern RPC_Manager rpc_mng;
+extern DHT dht;
+extern Server_socket server;
 
-// #endif
+#endif
