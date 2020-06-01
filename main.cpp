@@ -90,8 +90,8 @@ void cmd_handle(const char* _cmd){
 		strncpy(cmd, pos, n); 	pos += n+1;
 		if(!strcmp(cmd, "ping")){
 			// SHA_1 id(pos);
-			RPC node(pos, "PING", '0');
-			node.request();
+			RPC* node = new RPC(pos, "PING", '0');
+			node->request();
 		}
 	}
 }

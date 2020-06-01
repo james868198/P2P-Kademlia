@@ -60,9 +60,11 @@ public:
 	char 	ip[IP_size] = "";
 	char 	port[PORT_size] = "";
 	SHA_1 	srcID;
-	SHA_1 	dstID;
+	// ---------------------------
 	char 	msg[32] = "";
 	char 	ack;
+	SHA_1 	dstID;
+	// ---------------------------
 	char* 	data;
 	SHA_1 	key;	// key, value
 	char 	name[256] = "";	// filename
@@ -78,7 +80,9 @@ public:
 	void request();
 	void respond();
 	void print();
-	bool match(RPC& _rpc);
+	static bool match(const RPC* _a, const RPC* _b);
+	static void* requestThread(void * p);
+	static void* respondThread(void * p);
 };
 
 class RPC_Manager{
@@ -89,8 +93,8 @@ public:
 	RPC_Manager(){};
 
 	void handle(const char* _buf, const int _len);
-	// static void* RPCThread(void *);
-	void remove(RPC*& rpc);
+	void push(RPC* _rpc);
+	void remove(RPC* _rpc);
 };
 
 void help();

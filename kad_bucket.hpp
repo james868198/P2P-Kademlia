@@ -32,7 +32,7 @@ class K_Buck{
 public:
 	K_Buck(){};
 	K_Buck(int _k);
-	char* get(const SHA_1& _key);
+	vector<Node> get();
 	bool insert(const Node& _node);
 };
 
@@ -45,10 +45,11 @@ class DHT{
 
 	static int distance(const SHA_1& _a, const SHA_1& _b);
 	int distance(const SHA_1& _key);
-	void join();
+	
 public:
 	DHT(){};
 	DHT(const SHA_1& _key);
+	void join();
 	void insert(const Node& _node);
 	vector<Node> get_node(const SHA_1& _key);
 	string get_file(const SHA_1& _key);

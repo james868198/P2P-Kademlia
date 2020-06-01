@@ -14,9 +14,8 @@ K_Buck::K_Buck(int _k){
 	k = _k;
 }
 
-char* K_Buck::get(const SHA_1& _key){ 
-	char* a = 0;
-	return a; 
+vector<Node> K_Buck::get(){ 
+	return vector<Node>(list.begin(), list.end());
 }
 
 bool K_Buck::insert(const Node& _node){
@@ -33,6 +32,7 @@ bool K_Buck::insert(const Node& _node){
 	}else{
 		// bucket is full
 		Node lru = list.front(); list.pop_front();
+		// ping lru 
 		return false;
 	}
 }
@@ -89,8 +89,20 @@ DHT::DHT(const SHA_1& _key){
 	mkdir(download_folder, 0777);
 	// initilize the list to share
 	ls_file();
+	SHA_1 id(stripp(boot_ip, boot_port));
+	Node boot(boot_ip, boot_port, id);
+	// insert bootstrap node into the DHT
+	insert(boot);
+
+}
+
+void DHT::join(){
+
 	// join the network
-	join();
+	SHA_1 id(stripp(boot_ip, boot_port));
+	RPC* rpc = new RPC(id, "FIND_NODE", '0');
+	rpc->ID = ID;
+	rpc->request();
 }
 
 void DHT::ls_file(){
@@ -113,38 +125,40 @@ void DHT::ls_file(){
 
 }
 
-void DHT::join(){
-
-	SHA_1 id(stripp(boot_ip, boot_port));
-	Node boot(boot_ip, boot_port, id);
-	// insert bootstrap node into the DHT
-	insert(boot);
-	RPC rpc(id, "FIND_NODE", '0');
-	rpc.request();
-}
-
 void DHT::insert(const Node& _node){
 
 	int d = distance(ID, _node.ID);
 	if(buckets[d].insert(_node)){
 		nodes[string(_node.ID.get())] = _node;
-		printf("[insert] %s to bucket[%d]\n", _node.ID.get(), d);
+		printf("[insert] %s --> bucket[%d]\n", _node.ID.get(), d);
 	}
 }
 
 vector<Node> DHT::get_node(const SHA_1& _key){
 	vector<Node> list;
+	printf("[lookup] %s\n", _key.get());
+	string key = string(_key.get());
 	if(_key == local_id){
+		// local id
 		list.push_back(Node(local_ip, local_port, local_id));
+	}else if(nodes.count(key)){
+		// if target is in the list
+		list.push_back(nodes[key]);
 	}else{
-		string key = string(_key.get());
-		if(nodes.count(key)){
-			list.push_back(nodes[key]);
+		// return the closest k nodes
+		int d = distance(ID, _key);
+		while(list.size() < local_k && d <= 160){
+			vector<Node> buck = buckets[d].get();
+			for(auto& n : buck){
+				list.push_back(n);
+				if(list.size() >= local_k){
+					break;
+				}
+			}
+			d++;
 		}
 	}
-	for(Node n : list){
-		printf("[lookup] %s\n", n.ID.get());
-	}
+
 	return list;
 }
 

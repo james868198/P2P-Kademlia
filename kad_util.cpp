@@ -23,45 +23,159 @@ char 	download_folder[File_size] 	= "Download/";
 // RPC::
 // ==========================================================================================
 RPC::RPC(const SHA_1& _id, const char* _msg, const char _ack){
+	strcpy(ip, local_ip);
+	strcpy(port, local_port);
+	srcID = local_id;
 	dstID = _id;
 	strcpy(msg, _msg);
 	ack = _ack;
 }
 
 RPC::RPC(const char* _ipp, const char* _msg, const char _ack){
-	
+	strcpy(ip, local_ip);
+	strcpy(port, local_port);
+	srcID = local_id;
 	dstID = SHA_1(_ipp);
 	strcpy(msg, _msg);
 	ack = _ack;
 }
 
+// void* RPCThread(void * p){
+
+// 	RPC* rpc = (RPC*)p;
+// 	// needs response
+// 	if(!strcmp(rpc->msg, "PING")){
+// 		rpc->ack = '1';
+// 		char packet[512] = "";
+// 		sprintf(packet, "%s:%s:", local_ip, local_port);
+// 		sprintf(packet+strlen(packet), "%s", local_id.get());
+// 	    sprintf(packet+strlen(packet), "|PING|%c|", rpc->ack);
+// 	    sprintf(packet+strlen(packet), "%s|", rpc->srcID.get());
+// 	    // get node ip and port from the routing tree
+// 	    Client_socket node(rpc->ip, rpc->port);
+// 	    if(node){
+// 		    node.send(packet, strlen(packet));
+// 		    printf("<< %s\n", packet);
+// 	    }
+// 	}else if(!strcmp(rpc->msg, "STORE")){
+// 		// wait for following msg
+// 		while(rpc->ack == '0')
+// 			usleep(1000);
+
+// 	}else if(!strcmp(rpc->msg, "FIND_NODE")){
+
+// 	}else if(!strcmp(rpc->msg, "FIND_VALUE")){
+
+// 	}else{
+// 		printf("else\n");
+// 	}
+// 	rpc_mng.remove(rpc);
+// 	return nullptr;
+// }
+
 void RPC::request(){
-	// PING 
-	char packet[512] = "";
+	rpc_mng.push(this);
+	pthread_create(&thread_ID, NULL, (THREADFUNCPTR)RPC::requestThread, (void*)this);
+}
+
+void* RPC::requestThread(void * p){
+	RPC* rpc = (RPC*)p;
+	
+	char packet[2048] = "";
 	sprintf(packet, "%s:%s:", local_ip, local_port);
 	sprintf(packet+strlen(packet), "%s", local_id.get());
-    sprintf(packet+strlen(packet), "|PING|%c|", ack);
-    sprintf(packet+strlen(packet), "%s", dstID.get());
-    sprintf(packet+strlen(packet), "|");
+    sprintf(packet+strlen(packet), "|%s|%c|",rpc->msg, rpc->ack);
+    sprintf(packet+strlen(packet), "%s|", rpc->dstID.get());
     // get node ip and port from the routing tree
-    vector<Node> list = dht.get_node(dstID);
-    if(list.size()){
-    	Client_socket node(list.back().ip, list.back().port);
-	    if(node){
-		    node.send(packet, strlen(packet));
-		    printf("<< %s\n", packet);
-	    }
+    vector<Node> ids = dht.get_node(rpc->dstID);
+    if(!ids.size()){
+    	return (void*) false;
     }
-    
+    Client_socket csock(ids.back().ip, ids.back().port);
+	if(csock){
+		if(!strcmp(rpc->msg, "PING")){
+		    csock.send(packet, strlen(packet));
+		    printf("<< %s\n", packet);
+		    
+		}else if(!strcmp(rpc->msg, "STORE")){
+			// wait for following msg
+			while(rpc->ack == '0')
+				usleep(1000);
+
+		}else if(!strcmp(rpc->msg, "FIND_NODE")){
+			sprintf(packet+strlen(packet), "%s|", rpc->ID.get());
+			csock.send(packet, strlen(packet));
+		    printf("<< %s\n", packet);
+		    // time threshold
+		    while(!rpc->response){
+		    	usleep(1000);
+		    }
+		    // vector<Node> 
+		    // rpc->response->print();
+		    delete rpc->response;
+		}else if(!strcmp(rpc->msg, "FIND_VALUE")){
+
+		}else{
+			printf("else\n");
+		}
+	}
+	rpc_mng.remove(rpc);
+	delete rpc;
+	return (void*) true;
 }
 
 void RPC::respond(){
-	pthread_create(&thread_ID, NULL, (THREADFUNCPTR)RPCThread, (void*)this);
+	pthread_create(&thread_ID, NULL, (THREADFUNCPTR)RPC::respondThread, (void*)this);
+}
+
+void* RPC::respondThread(void * p){
+
+	RPC* rpc = (RPC*)p;
+	rpc->ack = '1';
+	// needs response
+	char packet[2048] = "";
+	sprintf(packet, "%s:%s:", local_ip, local_port);
+	sprintf(packet+strlen(packet), "%s", local_id.get());
+    sprintf(packet+strlen(packet), "|%s|%c|",rpc->msg, rpc->ack);
+    sprintf(packet+strlen(packet), "%s|", rpc->srcID.get());
+
+    Client_socket csock(rpc->ip, rpc->port);
+    if(csock){
+		if(!strcmp(rpc->msg, "PING")){
+			csock.send(packet, strlen(packet));
+		    printf("<< %s\n", packet);
+		    
+		}else if(!strcmp(rpc->msg, "STORE")){
+			// wait for following msg
+			while(rpc->ack == '0')
+				usleep(1000);
+
+		}else if(!strcmp(rpc->msg, "FIND_NODE")){
+			// get node ip and port from the routing tree
+		    vector<Node> ids = dht.get_node(rpc->ID);
+		    if(ids.size()){
+		    	sprintf(packet+strlen(packet), "%s|", rpc->ID.get());
+			    for(auto& id : ids){
+			    	sprintf(packet+strlen(packet), "%s:%s:%s,", id.ip, id.port, id.ID.get());
+			    }
+			    packet[strlen(packet)-1] = '\0';
+				csock.send(packet, strlen(packet));
+			    printf("<< %s\n", packet);
+		    }
+		}else if(!strcmp(rpc->msg, "FIND_VALUE")){
+
+		}else{
+			printf("else\n");
+		}
+	}
+	// rpc_mng.remove(rpc);
+	delete rpc;
+	return nullptr;
 }
 
 void RPC::print(){
 	printf("ip    :%s\n", ip);
-	printf("port. :%s\n", port);
+	printf("port  :%s\n", port);
 	printf("srcID :%s\n", srcID.get());
 	printf("msg   :%s\n", msg);
 	printf("ack   :%c\n", ack);
@@ -69,14 +183,14 @@ void RPC::print(){
 	printf("data  :%s\n", data);
 }
 
-bool RPC::match(RPC& _rpc){
-	if(srcID != _rpc.dstID){
+bool RPC::match(const RPC* _a, const RPC* _b){
+	if(_a->srcID != _b->dstID){
 		return false;
 	}
-	if(dstID != _rpc.srcID){
+	if(_a->dstID != _b->srcID){
 		return false;
 	}
-	if(strcmp(msg, _rpc.msg)){
+	if(strcmp(_a->msg, _b->msg)){
 		return false;
 	}
 	return true;
@@ -98,11 +212,22 @@ void RPC_Manager::handle(const char* _buf, const int _len){
 	}else{
 		printf("rpc received.\n");
 		if(rpc->ack == '0'){
-			RPC_list.push_back(rpc);
-			printf("list size : %d\n", (int)RPC_list.size());
 			rpc->respond();
+			delete rpc;
 		}else{
-
+			RPC* it = 0;
+			for(auto& _r : RPC_list){
+				if(RPC::match(_r, rpc)){
+					printf("[match]\n");
+					_r->response = rpc;
+					it = _r;
+					break;
+				}
+			}
+			if(!it){
+				printf("[no match]\n");
+				delete rpc;
+			}
 		}
 	}
 }
@@ -227,48 +352,17 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 	return ret;
 }
 
-void* RPCThread(void * p){
-
-	RPC* rpc = (RPC*)p;
-	// needs response
-	if(!strcmp(rpc->msg, "PING")){
-		rpc->ack = '1';
-		char packet[512] = "";
-		sprintf(packet, "%s:%s:", local_ip, local_port);
-		sprintf(packet+strlen(packet), "%s", local_id.get());
-	    sprintf(packet+strlen(packet), "|PING|%c|", rpc->ack);
-	    sprintf(packet+strlen(packet), "%s|", rpc->srcID.get());
-	    // get node ip and port from the routing tree
-	    Client_socket node(rpc->ip, rpc->port);
-	    if(node){
-		    node.send(packet, strlen(packet));
-		    printf("<< %s\n", packet);
-	    }
-	}else if(!strcmp(rpc->msg, "STORE")){
-		// wait for following msg
-		while(rpc->ack == '0')
-			usleep(1000);
-
-	}else if(!strcmp(rpc->msg, "FIND_NODE")){
-
-	}else if(!strcmp(rpc->msg, "FIND_VALUE")){
-
-	}else{
-		printf("else\n");
-	}
-	rpc_mng.remove(rpc);
-	return nullptr;
+void RPC_Manager::push(RPC* _rpc){
+	RPC_list.push_back(_rpc);
 }
 
-void RPC_Manager::remove(RPC*& rpc){
+void RPC_Manager::remove(RPC* _rpc){
 	for(auto it=RPC_list.begin(); it!=RPC_list.end(); ++it){
-		if(*it == rpc){
+		if(*it == _rpc){
 			RPC_list.erase(it);
 			break;
 		}
 	}
-	delete [] rpc->data;
-	delete rpc;
 }
 
 // ==========================================================================================
@@ -407,7 +501,7 @@ bool get_config(const char* filename){
 
 		// deploy the DHT and config the node
 		dht = DHT(local_id);
-
+		dht.join();
 	}
 	return true;
 }
