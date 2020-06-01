@@ -21,6 +21,8 @@ using namespace std;
 #define File_size 256
 #define Head_size 0
 
+#define t_Threshold 10
+
 typedef void * (*THREADFUNCPTR)(void *);
 
 class K_Buck;
@@ -56,7 +58,11 @@ private:
 	time_t rx_time;
 
 	pthread_t thread_ID = 0;
+	
+	void* ret;
 public:
+	bool block;
+	
 	char 	ip[IP_size] = "";
 	char 	port[PORT_size] = "";
 	SHA_1 	srcID;
@@ -74,12 +80,13 @@ public:
 	RPC* 	response = 0;
 
 	RPC(){};
-	RPC(const SHA_1& _id, const char* _msg, const char _ack);
-	RPC(const char* _ipp, const char* _msg, const char _ack);
+	RPC(const SHA_1& _id, const char* _msg, const char _ack, bool _block);
+	RPC(const char* _ipp, const char* _msg, const char _ack, bool _block);
 
-	void request();
-	void respond();
+	void* request();
+	void* respond();
 	void print();
+	void* get_response(){ return ret; };
 	static bool match(const RPC* _a, const RPC* _b);
 	static void* requestThread(void * p);
 	static void* respondThread(void * p);

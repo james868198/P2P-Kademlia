@@ -10,6 +10,31 @@ bool Node::operator == (const Node& _a) const {
 	return ID == _a.ID;
 }
 
+vector<Node> Node::parse(const char* _data){
+	vector<Node> ret;
+	char* end = (char*)_data + strlen(_data);
+	char* pos = (char*)_data;
+	// char* tok = 0;
+	int n = 0;
+	while(pos < end){
+		char _ip[IP_size] = "";
+		char _port[PORT_size] = "";
+		char _key[64] = "";
+
+		if(!(n = strstr(pos, ":") - pos)) return ret;
+		strncpy(_ip, pos, n); 	pos += n+1;
+		if(!(n = strstr(pos, ":") - pos)) return ret;
+		strncpy(_port, pos, n); 	pos += n+1;
+		if(pos < end){
+			strncpy(_key, pos, 40);	pos += 40+1;
+		}else{
+			return ret;
+		}
+		ret.push_back(Node(_ip, _port, SHA_1(SHA_1::to_hash(_key))));
+	}
+	return ret;
+}
+
 K_Buck::K_Buck(int _k){
 	k = _k;
 }
@@ -33,7 +58,17 @@ bool K_Buck::insert(const Node& _node){
 		// bucket is full
 		Node lru = list.front(); list.pop_front();
 		// ping lru 
-		return false;
+		RPC* rpc = new RPC(lru.ID, "PING", '0', true);
+		rpc->request();
+		if((bool)rpc->get_response()){
+			list.push_back(lru);
+			delete rpc;
+			return false;
+		}else{
+			list.push_back(_node);
+			delete rpc;
+			return true;
+		}
 	}
 }
 
@@ -100,9 +135,10 @@ void DHT::join(){
 
 	// join the network
 	SHA_1 id(stripp(boot_ip, boot_port));
-	RPC* rpc = new RPC(id, "FIND_NODE", '0');
+	RPC* rpc = new RPC(id, "FIND_NODE", '0', false);
 	rpc->ID = ID;
 	rpc->request();
+	// delete rpc;
 }
 
 void DHT::ls_file(){
@@ -125,12 +161,22 @@ void DHT::ls_file(){
 
 }
 
+bool DHT::contain(const Node& _node){
+	if(nodes.count(string(_node.ID.get()))){
+		return true;
+	}else{
+		return false;
+	}
+}
+
 void DHT::insert(const Node& _node){
 
 	int d = distance(ID, _node.ID);
-	if(buckets[d].insert(_node)){
-		nodes[string(_node.ID.get())] = _node;
-		printf("[insert] %s --> bucket[%d]\n", _node.ID.get(), d);
+	if(!contain(_node)){
+		if(buckets[d].insert(_node)){
+			nodes[string(_node.ID.get())] = _node;
+			printf("[insert] %s --> bucket[%d]\n", _node.ID.get(), d);
+		}
 	}
 }
 

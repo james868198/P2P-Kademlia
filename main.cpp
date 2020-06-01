@@ -89,9 +89,17 @@ void cmd_handle(const char* _cmd){
 		char cmd[1024] = "";
 		strncpy(cmd, pos, n); 	pos += n+1;
 		if(!strcmp(cmd, "ping")){
-			// SHA_1 id(pos);
-			RPC* node = new RPC(pos, "PING", '0');
-			node->request();
+			RPC* rpc = new RPC(pos, "PING", '0', true);
+			rpc->request();
+			bool ret = (bool)rpc->get_response();
+			printf("ping %s ---- %s!\n", pos, (ret ? "Yes" : "No"));
+			delete rpc;
+		}else if(!strcmp(cmd, "find")){
+			RPC* rpc = new RPC(pos, "PING", '0', true);
+			rpc->request();
+			bool ret = (bool)rpc->get_response();
+			printf("ping %s ---- %s!\n", pos, (ret ? "Yes" : "No"));
+			delete rpc;
 		}
 	}
 }
