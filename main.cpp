@@ -61,7 +61,6 @@ int main(int argc, char* argv[]){
 		cin.getline(cmd, 1024);
 		if(!strcmp(cmd, "exit")){
 			RUNNING = false;
-			// pthread_join(server_ID, NULL);
 			break;
 		}else{
 			cmd_handle(cmd);

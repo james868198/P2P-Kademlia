@@ -40,32 +40,32 @@ K_Buck::K_Buck(int _k){
 }
 
 vector<Node> K_Buck::get(){ 
-	return vector<Node>(list.begin(), list.end());
+	return vector<Node>(nodes.begin(), nodes.end());
 }
 
 bool K_Buck::insert(const Node& _node){
 
-	if(list.size() <= k){
+	if(nodes.size() <= k){
 
-		auto it = find(list.begin(), list.end(), _node);
-		if(it != list.end()){
+		auto it = find(nodes.begin(), nodes.end(), _node);
+		if(it != nodes.end()){
 			// already exists, put it to the back
-			list.remove(_node);
+			nodes.remove(_node);
 		}
-		list.push_back(_node);
+		nodes.push_back(_node);
 		return true;
 	}else{
 		// bucket is full
-		Node lru = list.front(); list.pop_front();
+		Node lru = nodes.front(); nodes.pop_front();
 		// ping lru 
 		RPC* rpc = new RPC(lru.ID, "PING", '0', true);
 		rpc->request();
 		if((bool)rpc->get_response()){
-			list.push_back(lru);
+			nodes.push_back(lru);
 			delete rpc;
 			return false;
 		}else{
-			list.push_back(_node);
+			nodes.push_back(_node);
 			delete rpc;
 			return true;
 		}

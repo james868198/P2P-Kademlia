@@ -28,7 +28,7 @@ public:
 class K_Buck{
 
 	int k = 0;
-	list<Node> list;
+	list<Node> nodes;
 
 public:
 	K_Buck(){};
@@ -53,7 +53,7 @@ public:
 	void join();
 	void insert(const Node& _node);
 	bool contain(const Node& _node);
-	
+
 	vector<Node> get_node(const SHA_1& _key);
 	string get_file(const SHA_1& _key);
 	void ls_file();
