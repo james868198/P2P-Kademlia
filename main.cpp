@@ -89,9 +89,10 @@ void cmd_handle(const char* _cmd){
 		strncpy(cmd, pos, n); 	pos += n+1;
 		if(!strcmp(cmd, "ping")){
 			// e.g. ping 192.168.1.37:8888
+			bool ret = 0;
 			RPC* rpc = new RPC(pos, "PING", '0', true);
-			rpc->request();
-			bool ret = (bool)rpc->get_response();
+			rpc->ret = &ret;
+			ret = rpc->request();
 			printf("ping %s ---- %s!\n", pos, (ret ? "Yes" : "No"));
 			delete rpc;
 
@@ -103,7 +104,9 @@ void cmd_handle(const char* _cmd){
 				n = tok - pos;
 				strncpy(fname, pos, n);	pos += n+1;
 				SHA_1 fid = SHA_1(fname);
+				// bool ret = 0;
 				RPC* rpc = new RPC(pos, "STORE", '0', false);
+				// rpc->ret = &ret;
 				rpc->key = fid;
 				rpc->request();
 			}
@@ -113,11 +116,13 @@ void cmd_handle(const char* _cmd){
 			char fname[File_size] = "";
 			strcpy(fname, pos);
 			SHA_1 fid = SHA_1(fname);
+			bool ret = 0;
 			RPC* rpc = new RPC("", "FIND_VALUE", '0', true);
 			rpc->key = fid;
-			rpc->request();
+			// rpc->ret = &ret;
+			ret = rpc->request();
 			delete rpc;
-			printf("get %s\n", fname);
+			printf("get %s ---- %s!\n", fname, ((bool)ret ? "Yes" : "No"));
 			
 		}
 	}

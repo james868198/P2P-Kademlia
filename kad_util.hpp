@@ -68,7 +68,7 @@ private:
 
 	pthread_t thread_ID = 0;
 	
-	void* ret;
+	
 public:
 	bool 	block = false;
 
@@ -93,6 +93,7 @@ public:
 
 	void*	param = 0;
 	void*	val = 0;
+	void* 	ret;
 
 	RPC(){};
 	RPC(const SHA_1& _id, const char* _msg, const char _ack, bool _block);

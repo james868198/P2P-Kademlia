@@ -45,11 +45,13 @@ RPC::RPC(const char* _ipp, const char* _msg, const char _ack, bool _block){
 
 
 void* RPC::request(){
+	void* retval = 0;
 	rpc_mng.push(this);
 	pthread_create(&thread_ID, NULL, (THREADFUNCPTR)RPC::requestThread, (void*)this);
 	if(block){
-		pthread_join(thread_ID, &ret);
-		return ret;
+		pthread_join(thread_ID, &retval);
+		// return retval;
+		return retval;
 	}else{
 		return NULL;
 	}
@@ -57,7 +59,8 @@ void* RPC::request(){
 
 void* RPC::requestThread(void * p){
 	RPC* rpc = (RPC*)p;
-	rpc->ret = (void*)false;
+	bool retval = false;
+	// (*(bool*)rpc->ret) = false;
 	char packet[2048] = "";
 	sprintf(packet, "%s:%s:", local_ip, local_port);
 	sprintf(packet+strlen(packet), "%s", local_id.get());
@@ -88,7 +91,8 @@ void* RPC::requestThread(void * p){
 			    }
 			    printf("\n");
 			    if(rpc->response){
-			    	rpc->ret = (void*) true;
+			    	// (*(bool*)rpc->ret) = (void*) true;
+			    	retval = true;
 				    delete rpc->response;
 			    }else{
 			    	printf("[timeout]\n");
@@ -177,13 +181,14 @@ void* RPC::requestThread(void * p){
 				    delete [] rpc->response->data;
 				    delete rpc->response;
 				    if(closer){
-				    	rpc->ret = (void*)true;
+				    	// (*(bool*)rpc->ret) = (void*) true;
+				    	retval = true;
 				    	if(rpc->val){
 				    		(*(int*)rpc->val) ++;
 				    	}
 
 				    }else{
-				    	rpc->ret = (void*)false;
+				    	// *rpc->ret = (void*)false;
 				    }
 			    }else{
 			    	printf("[timeout]\n");
@@ -221,9 +226,10 @@ void* RPC::requestThread(void * p){
 		    printf("\n");
 		    if(closer >= local_k){
 		    	rpc->rx_time = now;
-		    	rpc->ret = (void*)true;
+		    	// (*(bool*)rpc->ret) = (void*) true;
+		    	retval = true;
 		    }else{
-		    	rpc->ret = (void*)false;
+		    	// rpc->ret = (void*)false;
 		    	printf("[timeout]\n");
 		    }
 		}
@@ -231,7 +237,8 @@ void* RPC::requestThread(void * p){
 	}else if(!strcmp(rpc->msg, "FIND_VALUE")){
 		string sfname = dht.get_file(rpc->key);
 		if(sfname != ""){
-			rpc->ret = (void*)true;
+			// (*(bool*)rpc->ret) = (void*) true;
+			retval = true;
 		}else{
 			Node id = dht.get(rpc->dstID);
 			if(id){
@@ -256,7 +263,8 @@ void* RPC::requestThread(void * p){
 				    if(rpc->response){
 				    	rpc->rx_time = now;
 				    	if(rpc->response->ack == '2'){
-				    		rpc->ret = (void*)true;
+				    		// (*(bool*)rpc->ret) = (void*)true;
+				    		retval = true;
 				    		if(rpc->val){
 					    		(*(int*)rpc->val) = true;
 					    	}
@@ -307,9 +315,10 @@ void* RPC::requestThread(void * p){
 			    printf("\n");
 			    if(found){
 			    	rpc->rx_time = now;
-			    	rpc->ret = (void*)true;
+			    	// (*(bool*)rpc->ret) = (void*) true;
+			    	retval = true;
 			    }else{
-			    	rpc->ret = (void*)false;
+			    	// rpc->ret = (void*)false;
 			    	printf("[timeout]\n");
 			    }
 			}
@@ -323,15 +332,18 @@ void* RPC::requestThread(void * p){
 	if(!rpc->block){
 		delete rpc;
 	}
-	return (void*) rpc->ret;
+	return (void*)retval;
+	// return NULL;
 }
 
 void* RPC::respond(){
 	rpc_mng.push(this);
 	pthread_create(&thread_ID, NULL, (THREADFUNCPTR)RPC::respondThread, (void*)this);
 	if(block){
-		// pthread_join(thread_ID, &ret);
-		return ret;
+		// pthread_join(thread_ID, ret);
+		// (*(bool*)rpc->ret) = (void*) true;
+		// return ret;
+		return NULL;
 	}else{
 		return NULL;
 	}

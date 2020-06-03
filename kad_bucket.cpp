@@ -58,9 +58,11 @@ bool K_Buck::insert(const Node& _node){
 		// bucket is full
 		Node lru = nodes.front(); nodes.pop_front();
 		// ping lru 
+		bool ret = 0;
 		RPC* rpc = new RPC(lru.ID, "PING", '0', true);
-		rpc->request();
-		if((bool)rpc->get_response()){
+		// rpc->ret = &ret;
+		ret = rpc->request();
+		if(ret){
 			nodes.push_back(lru);
 			delete rpc;
 			return false;
