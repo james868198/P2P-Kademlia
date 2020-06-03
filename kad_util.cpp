@@ -216,6 +216,7 @@ void* RPC::respondThread(void * p){
 
     Client_socket csock(rpc->ip, rpc->port);
     if(csock){
+    	printf("%s:%s\n", rpc->ip, rpc->port);
 		if(!strcmp(rpc->msg, "PING")){
 			csock.send(packet, strlen(packet));
 		    printf("<< %s\n", packet);
@@ -312,14 +313,14 @@ void RPC_Manager::handle(const char* _buf, const int _len){
 
 	RPC* rpc = resolve(_buf, _len);
 	if(!rpc){
-		printf("rpc discarded.\n");
+		printf("[drop]\n");
 		return;
 	}
 	if(local_id != rpc->dstID){
 		// discard
-		printf("rpc discarded.\n");
+		printf("[drop]\n");
 	}else{
-		printf("rpc received.\n");
+		// printf("rpc received.\n");
 		if(rpc->ack == '0'){
 			rpc->respond();
 			// delete rpc;
@@ -327,14 +328,14 @@ void RPC_Manager::handle(const char* _buf, const int _len){
 			RPC* it = 0;
 			for(auto& _r : RPC_list){
 				if(RPC::match(_r, rpc)){
-					printf("[match]\n");
+					// printf("[match]\n");
 					_r->response = rpc;
 					it = _r;
 					break;
 				}
 			}
 			if(!it){
-				printf("[no match]\n");
+				// printf("[no match]\n");
 				delete rpc;
 			}
 		}
@@ -455,7 +456,7 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 			ret->dlen = len;
 			ret->data = new char [len];
 			memcpy(ret->data, pos, len);
-			printf("new [%d]\n", len);
+			// printf("new [%d]\n", len);
 		}
 	}
 	// ret->print();
@@ -490,6 +491,7 @@ void* serverThread(void* p){
 	while(RUNNING){
 		if((n = server.recv(recvbuf, &cliaddr, sizeof(recvbuf))) > 0){
 			// do something
+			recvbuf[n] = '\0';
     		printf(">> %s\n", recvbuf); 
     		rpc_mng.handle(recvbuf, n);
 
