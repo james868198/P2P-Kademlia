@@ -145,13 +145,13 @@ void* RPC::requestThread(void * p){
 		    printf("\n");
 		    if(rpc->response){
 		    	rpc->rx_time = now;
-			    rpc->response->print();
+			    // rpc->response->print();
 			    vector<Node> nods = Node::parse(rpc->response->data, rpc->response->dlen);
 			    bool found = false;
 			    for(auto& nod : nods){
 			    	printf("[back] %s:%s:%s\n", nod.ip, nod.port, nod.ID.get());
 			    	if(nod.ID == rpc->ID){
-			    		printf("[found]\n");
+			    		// printf("[found]\n");
 			    		found = true;
 			    		rpc->ret = (void*) true;
 			    	}
@@ -162,7 +162,7 @@ void* RPC::requestThread(void * p){
 		    			RPC* recurs = new RPC(nod.ID, "FIND_NODE", '0', true);
 		    			recurs->ID = local_id;
 						recurs->request();
-						if(rpc->ret == (void*)true){
+						if(recurs->ret == (void*)true){
 							rpc->ret = (void*)true;
 							break;
 						}

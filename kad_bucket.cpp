@@ -208,10 +208,13 @@ vector<Node> DHT::get_node(const SHA_1& _key){
 	if(_key == local_id){
 		// local id
 		ret.push_back(Node(local_ip, local_port, local_id));
-	}else if(nodes.count(key)){
-		// if target is in the list
-		ret.push_back(nodes[key]);
-	}else{
+
+	}
+	// if(nodes.count(key)){
+	// 	// if target is in the list
+	// 	ret.push_back(nodes[key]);
+	// }
+	if(true){
 		// return the closest k nodes
 		int d = distance(ID, _key);
 		int small_d = d-1;
