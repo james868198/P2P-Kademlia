@@ -24,7 +24,7 @@ File::File(const char* filename, int rw){
 			}
 		}else{
 			cerr << "File " << filename << " not found" << endl;
-	    	// this->~File();
+	    	this->~File();
 		}
 	}
 }

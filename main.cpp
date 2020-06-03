@@ -98,7 +98,6 @@ void cmd_handle(const char* _cmd){
 		}else if(!strcmp(cmd, "store")){
 			// e.g. store file1.txt 192.168.1.37:8888
 			char fname[File_size] = "";
-			
 			tok = strstr(pos, " ");
 			if(tok){
 				n = tok - pos;
@@ -111,11 +110,15 @@ void cmd_handle(const char* _cmd){
 
 		}else if(!strcmp(cmd, "get")){
 			// e.g. get file1.txt
-			RPC* rpc = new RPC(pos, "PING", '0', true);
+			char fname[File_size] = "";
+			strcpy(fname, pos);
+			SHA_1 fid = SHA_1(fname);
+			RPC* rpc = new RPC("", "FIND_VALUE", '0', true);
+			rpc->key = fid;
 			rpc->request();
-			bool ret = (bool)rpc->get_response();
-			printf("ping %s ---- %s!\n", pos, (ret ? "Yes" : "No"));
 			delete rpc;
+			printf("get %s\n", fname);
+			
 		}
 	}
 }

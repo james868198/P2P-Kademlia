@@ -92,7 +92,7 @@ public:
 	RPC* 	response = 0;
 
 	void*	param = 0;
-	void*	closer = 0;
+	void*	val = 0;
 
 	RPC(){};
 	RPC(const SHA_1& _id, const char* _msg, const char _ack, bool _block);

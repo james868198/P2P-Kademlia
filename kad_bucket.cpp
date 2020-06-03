@@ -123,7 +123,7 @@ DHT::DHT(const SHA_1& _key){
 	ID = _key;
 	Node local(local_ip, local_port, ID);
 	insert(local);
-	
+
 	mkdir(shared_folder, 0777);
 	mkdir(download_folder, 0777);
 	// initilize the list to share
