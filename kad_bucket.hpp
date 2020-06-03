@@ -21,6 +21,14 @@ public:
 
 	Node(){};
 	Node(const char* _ip, const char* _port, const SHA_1 _id);
+
+	operator bool() const {
+		if(ID){
+			return true;
+		}else{
+			return false;
+		}
+	};
 	bool operator == (const Node& _a) const ;
 	static vector<Node> parse(const char* _data, int _len);
 };
@@ -54,6 +62,8 @@ public:
 
 	void insert(const Node& _node);
 	bool contain(const Node& _node);
+
+	Node get(const SHA_1& _key);
 	vector<Node> get_node(const SHA_1& _key);
 
 	string get_file(const SHA_1& _key);
@@ -62,7 +72,7 @@ public:
 
 	void ls_file();
 	void print_file();
-	
+
 };
 
 

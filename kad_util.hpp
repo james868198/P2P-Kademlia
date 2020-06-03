@@ -12,6 +12,7 @@
 
 #include <vector>
 #include <memory>		//unique_ptr
+#include <set>
 
 using namespace std;
 
@@ -43,6 +44,14 @@ public:
 	const char* get() const { return key; };
 	unsigned char* get_hash() const { return (unsigned char*)hash; };
 
+	operator bool() const {
+		for(int i=0; i<SHA_DIGEST_LENGTH; i++){
+			if(hash[i]){
+				return true;
+			}
+		}
+		return false;
+	}
 	bool operator == (const SHA_1& a) const;
 	bool operator != (const SHA_1& a) const { return !(*this == a); };
 	bool operator == (const unsigned char* a) const;
@@ -66,10 +75,12 @@ public:
 	char 	ip[IP_size] = "";
 	char 	port[PORT_size] = "";
 	SHA_1 	srcID;
+
 	// ---------------------------
 	char 	msg[32] = "";
 	char 	ack;
 	SHA_1 	dstID;
+	// Node 	dstNode;
 	// ---------------------------
 	SHA_1 	key;	// key, value
 	char 	name[File_size] = "";	// filename
@@ -79,6 +90,9 @@ public:
 	char* 	data;
 	int 	dlen = 0;
 	RPC* 	response = 0;
+
+	void*	param = 0;
+	void*	closer = 0;
 
 	RPC(){};
 	RPC(const SHA_1& _id, const char* _msg, const char _ack, bool _block);

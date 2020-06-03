@@ -63,125 +63,233 @@ void* RPC::requestThread(void * p){
 	sprintf(packet, "%s:%s:", local_ip, local_port);
 	sprintf(packet+strlen(packet), "%s", local_id.get());
     sprintf(packet+strlen(packet), "|%s|%c|",rpc->msg, rpc->ack);
-    sprintf(packet+strlen(packet), "%s|", rpc->dstID.get());
-    // get node ip and port from the routing tree
-    vector<Node> ids = dht.get_node(rpc->dstID);
-    if(!ids.size()){
-    	return (void*) false;
-    }
-    Client_socket csock(ids.back().ip, ids.back().port);
-	if(csock){
-		if(!strcmp(rpc->msg, "PING")){
-		    csock.send(packet, strlen(packet));
-		    printf("<< %s\n", packet);
-		    // time threshold
-		    time(&rpc->tx_time);
-		    time_t now;
-		    time(&now);
-		    int rtt = abs(int(difftime(now, rpc->tx_time)));
-		    // wait for response
-		    while((!rpc->response) && (rtt < t_Threshold)){
-		    	usleep(1000);
-		    	time(&now);
-		    	rtt = abs(int(difftime(now, rpc->tx_time)));
-		    }
-		    printf("\n");
-		    if(rpc->response){
-		    	rpc->ret = (void*) true;
-			    delete rpc->response;
-		    }else{
-		    	printf("[timeout]\n");
-		    }
-		}else if(!strcmp(rpc->msg, "STORE")){
-			sprintf(packet+strlen(packet), "%s|", rpc->key.get());
+    
+    char* pack_ptr = packet+strlen(packet);
+    
 
-			string sfname = dht.get_file(rpc->key);
-			if(sfname != ""){
-				char fname[File_size] = "";
-				strcpy(fname, shared_folder);
-				strcpy(fname + strlen(fname), sfname.c_str());
-			    File file(fname, 0);
-			    if(file){
-			    	strcpy(rpc->name, sfname.c_str());
-					rpc->len = file.length();
-					int buflen = strlen(packet) + rpc->len;
-					char* packet2 = new char [buflen + 1];
-
-					sprintf(packet+strlen(packet), "%s|", rpc->name);
-					sprintf(packet+strlen(packet), "%d|", rpc->len);
-					csock.send(packet, strlen(packet));
-				    printf("<< %s\n", packet);
-
-				    sprintf(packet2, "%s:%s:", local_ip, local_port);
-					sprintf(packet2+strlen(packet2), "%s", local_id.get());
-				    sprintf(packet2+strlen(packet2), "|%s|%c|",rpc->msg, '1');
-				    sprintf(packet2+strlen(packet2), "%s|", rpc->dstID.get());
-				    sprintf(packet2+strlen(packet2), "%s|", rpc->key.get());
-
-				    file.read(packet2 + strlen(packet2), rpc->len);
-				    packet2[buflen] = '\0';
-				    csock.send(packet2, buflen);
-				    printf("<< %s\n", packet2);
-				    delete [] packet2;
-
+	if(!strcmp(rpc->msg, "PING")){
+		// get node ip and port from the routing table
+		Node id = dht.get(rpc->dstID);
+		if(id){
+			Client_socket csock(id.ip, id.port);
+			if(csock){
+				sprintf(pack_ptr, "%s|", rpc->dstID.get());
+			    csock.send(packet, strlen(packet));
+			    printf("<< %s\n", packet);
+			    // time threshold
+			    time(&rpc->tx_time);
+			    time_t now;
+			    time(&now);
+			    int rtt = abs(int(difftime(now, rpc->tx_time)));
+			    // wait for response
+			    while((!rpc->response) && (rtt < t_Threshold)){
+			    	usleep(1000);
+			    	time(&now);
+			    	rtt = abs(int(difftime(now, rpc->tx_time)));
+			    }
+			    printf("\n");
+			    if(rpc->response){
+			    	rpc->ret = (void*) true;
+				    delete rpc->response;
+			    }else{
+			    	printf("[timeout]\n");
 			    }
 			}
+		}
+		
+	}else if(!strcmp(rpc->msg, "STORE")){
+		Node id = dht.get(rpc->dstID);
+		if(id){
+			Client_socket csock(id.ip, id.port);
+			if(csock){
+				sprintf(pack_ptr, "%s|", rpc->dstID.get());
+				sprintf(packet+strlen(packet), "%s|", rpc->key.get());
 
-		}else if(!strcmp(rpc->msg, "FIND_NODE")){
-			sprintf(packet+strlen(packet), "%s|", rpc->ID.get());
-			csock.send(packet, strlen(packet));
-		    printf("<< %s\n", packet);
-		    // time threshold
-		    time(&rpc->tx_time);
-		    time_t now;
+				string sfname = dht.get_file(rpc->key);
+				if(sfname != ""){
+					char fname[File_size] = "";
+					strcpy(fname, shared_folder);
+					strcpy(fname + strlen(fname), sfname.c_str());
+				    File file(fname, 0);
+				    if(file){
+				    	strcpy(rpc->name, sfname.c_str());
+						rpc->len = file.length();
+						int buflen = strlen(packet) + rpc->len;
+						char* packet2 = new char [buflen + 1];
+
+						sprintf(packet+strlen(packet), "%s|", rpc->name);
+						sprintf(packet+strlen(packet), "%d|", rpc->len);
+						csock.send(packet, strlen(packet));
+					    printf("<< %s\n", packet);
+
+					    sprintf(packet2, "%s:%s:", local_ip, local_port);
+						sprintf(packet2+strlen(packet2), "%s", local_id.get());
+					    sprintf(packet2+strlen(packet2), "|%s|%c|",rpc->msg, '1');
+					    sprintf(packet2+strlen(packet2), "%s|", rpc->dstID.get());
+					    sprintf(packet2+strlen(packet2), "%s|", rpc->key.get());
+
+					    file.read(packet2 + strlen(packet2), rpc->len);
+					    packet2[buflen] = '\0';
+					    csock.send(packet2, buflen);
+					    printf("<< %s\n", packet2);
+					    delete [] packet2;
+
+				    }
+				}
+			}
+		}
+
+	}else if(!strcmp(rpc->msg, "FIND_NODE")){
+		Node id = dht.get(rpc->dstID);
+		if(id){
+			Client_socket csock(id.ip, id.port);
+			if(csock){
+				sprintf(pack_ptr, "%s|", rpc->dstID.get());
+				sprintf(packet+strlen(packet), "%s|", rpc->ID.get());
+				csock.send(packet, strlen(packet));
+			    printf("<< %s\n", packet);
+			    // time threshold
+			    time(&rpc->tx_time);
+			    time_t now;
+			    time(&now);
+			    int rtt = abs(int(difftime(now, rpc->tx_time)));
+			    // wait for response
+			    while((!rpc->response) && (rtt < t_Threshold)){
+			    	usleep(1000);
+			    	time(&now);
+			    	rtt = abs(int(difftime(now, rpc->tx_time)));
+			    }
+			    printf("\n");
+			    if(rpc->response){
+			    	rpc->rx_time = now;
+				    // rpc->response->print();
+				    int closer = 0;
+				    vector<Node> nods = Node::parse(rpc->response->data, rpc->response->dlen);
+				    for(auto& nod : nods){
+				    	printf("[back] %s:%s:%s\n", nod.ip, nod.port, nod.ID.get());
+				    	if(!dht.contain(nod)){
+				    		closer++;
+				    	}
+				    	if(rpc->param){
+				    		((vector<Node>*)rpc->param)->push_back(nod);
+				    	}
+				    	dht.insert(nod);
+				    }
+				    delete [] rpc->response->data;
+				    delete rpc->response;
+				    if(closer){
+				    	rpc->ret = (void*)true;
+				    	if(rpc->closer){
+				    		(*(int*)rpc->closer) ++;
+				    	}
+
+				    }else{
+				    	rpc->ret = (void*)false;
+				    }
+			    }else{
+			    	printf("[timeout]\n");
+			    }	
+			}
+		}else{
+			unordered_map<string, int> seen;
+			vector<Node> ids = dht.get_node(rpc->ID);
+			int closer = 0;
+			bool found = false;
+			time(&rpc->tx_time);
+			time_t now;
+			auto it=ids.begin();
+			for(; it!=ids.end() && closer<local_k; ++it){
+				string str = string(it->ID.get());
+				if(!seen.count(str)){
+					RPC* recurs = new RPC(it->ID, "FIND_NODE", '0', false);
+	                recurs->ID = rpc->ID;
+	                recurs->closer = &closer;
+	                recurs->param = &ids;
+	                recurs->request();
+	                seen[str] = 1;
+	                usleep(1000);
+	            }
+	        }
 		    time(&now);
 		    int rtt = abs(int(difftime(now, rpc->tx_time)));
 		    // wait for response
-		    while((!rpc->response) && (rtt < t_Threshold)){
+		    while((closer<local_k) && (rtt < t_Threshold+3)){
 		    	usleep(1000);
 		    	time(&now);
 		    	rtt = abs(int(difftime(now, rpc->tx_time)));
 		    }
 		    printf("\n");
-		    if(rpc->response){
+		    if(closer >= local_k){
 		    	rpc->rx_time = now;
-			    // rpc->response->print();
-			    vector<Node> nods = Node::parse(rpc->response->data, rpc->response->dlen);
-			    bool found = false;
-			    for(auto& nod : nods){
-			    	printf("[back] %s:%s:%s\n", nod.ip, nod.port, nod.ID.get());
-			    	if(nod.ID == rpc->ID){
-			    		// printf("[found]\n");
-			    		found = true;
-			    		rpc->ret = (void*) true;
-			    	}
-			    	dht.insert(nod);
-			    }
-			    if(!found){
-			    	for(auto& nod : nods){
-		    			RPC* recurs = new RPC(nod.ID, "FIND_NODE", '0', true);
-		    			recurs->ID = local_id;
-						recurs->request();
-						if(recurs->ret == (void*)true){
-							rpc->ret = (void*)true;
-							break;
-						}
-				    	
-				    }
-			    }
-			    
-			    delete [] rpc->response->data;
-			    delete rpc->response;
+		    	rpc->ret = (void*)true;
 		    }else{
-		    	printf("[timeout]\n");
+		    	rpc->ret = (void*)false;
 		    }
-		}else if(!strcmp(rpc->msg, "FIND_VALUE")){
+			// 	string str = string(it->ID.get());
+			// 	if(!seen.count(str)){
+			// 		Client_socket csock(it->ip, it->port);
+			// 		if(csock){
+			// 			sprintf(pack_ptr, "%s|", it->ID.get());
+			// 			sprintf(packet+strlen(packet), "%s|", rpc->ID.get());
+			// 			csock.send(packet, strlen(packet));
+			// 		    printf("<< %s\n", packet);
+			// 		    // time threshold
+			// 		    time(&rpc->tx_time);
+			// 		    time_t now;
+			// 		    time(&now);
+			// 		    int rtt = abs(int(difftime(now, rpc->tx_time)));
+			// 		    // wait for response
+			// 		    while((!rpc->response) && (rtt < t_Threshold)){
+			// 		    	usleep(1000);
+			// 		    	time(&now);
+			// 		    	rtt = abs(int(difftime(now, rpc->tx_time)));
+			// 		    }
+			// 		    printf("\n");
+			// 		    if(rpc->response){
+			// 		    	rpc->rx_time = now;
+			// 			    // rpc->response->print();
+			// 			    vector<Node> nods = Node::parse(rpc->response->data, rpc->response->dlen);
+						    
+			// 			    for(auto& nod : nods){
+			// 			    	string nstr = string(nod.ID.get());
+			// 			    	if(!seen.count(nstr)){
+			// 			    		printf("[back] %s:%s:%s\n", nod.ip, nod.port, nod.ID.get());
+			// 			    		if(nod.ID == rpc->ID){
+			// 				    		printf("[found]\n");
+			// 				    		found = true;
+			// 				    		rpc->ret = (void*) true;
+			// 				    	}
+			// 				    	if(!dht.get(nod.ID)){
+			// 				    		dht.insert(nod);
+			// 				    	}
+			// 				    	ids.push_back(nod);
+			// 				    	// seen[nstr] = 1;
+			// 			    	}
+			// 			    }
+			// 			    delete [] rpc->response->data;
+			// 			    delete rpc->response;
+			// 			    rpc->response = 0;
+			// 			    if(found){
+			// 			    	break;
+			// 			    }else{
 
-		}else{
-			printf("else\n");
+			// 			    }
+			// 		    }else{
+			// 		    	printf("[timeout]\n");
+			// 		    }
+
+			// 		}			
+			// 	}
+			// 	seen[str] = 1;
+			// }
 		}
+		
+	}else if(!strcmp(rpc->msg, "FIND_VALUE")){
+
+	}else{
+		printf("else\n");
 	}
-	// printf("[rpc done]\n");
+
 	rpc_mng.remove(rpc);
 	if(!rpc->block){
 		delete rpc;

@@ -110,6 +110,7 @@ void cmd_handle(const char* _cmd){
 			}
 
 		}else if(!strcmp(cmd, "get")){
+			// e.g. get file1.txt
 			RPC* rpc = new RPC(pos, "PING", '0', true);
 			rpc->request();
 			bool ret = (bool)rpc->get_response();

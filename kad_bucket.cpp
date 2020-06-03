@@ -117,9 +117,13 @@ int DHT::distance(const SHA_1& _key){
 
 DHT::DHT(const SHA_1& _key){
 	// initialize the DHT
-	ID = _key;
+	
 	buckets = vector<K_Buck>(161, K_Buck(local_k));
 
+	ID = _key;
+	Node local(local_ip, local_port, ID);
+	insert(local);
+	
 	mkdir(shared_folder, 0777);
 	mkdir(download_folder, 0777);
 	// initilize the list to share
@@ -198,6 +202,14 @@ void DHT::insert(const Node& _node){
 			nodes[string(_node.ID.get())] = _node;
 			printf("[insert] %s --> bucket[%d]\n", _node.ID.get(), d);
 		}
+	}
+}
+Node DHT::get(const SHA_1& _key){
+	string k = string(_key.get());
+	if(nodes.count(k)){
+		return nodes[k];
+	}else{
+		return Node();
 	}
 }
 
