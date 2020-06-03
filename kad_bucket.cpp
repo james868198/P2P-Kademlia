@@ -10,9 +10,9 @@ bool Node::operator == (const Node& _a) const {
 	return ID == _a.ID;
 }
 
-vector<Node> Node::parse(const char* _data){
+vector<Node> Node::parse(const char* _data, int _len){
 	vector<Node> ret;
-	char* end = (char*)_data + strlen(_data);
+	char* end = (char*)_data + _len;
 	char* pos = (char*)_data;
 	// char* tok = 0;
 	int n = 0;
@@ -123,7 +123,8 @@ DHT::DHT(const SHA_1& _key){
 	mkdir(shared_folder, 0777);
 	mkdir(download_folder, 0777);
 	// initilize the list to share
-	ls_file();
+	
+	print_file();
 	SHA_1 id(stripp(boot_ip, boot_port));
 	Node boot(boot_ip, boot_port, id);
 	// insert bootstrap node into the DHT
@@ -141,8 +142,27 @@ void DHT::join(){
 	// delete rpc;
 }
 
+void DHT::print_file(){
+	DIR *dir;
+	struct dirent *ent;
+	if ((dir = opendir (shared_folder)) != NULL) {
+	  	/* print all the files and directories within directory */
+	  	printf("Shared files :\n");
+	  	while ((ent = readdir (dir)) != NULL) {
+	  		if(ent->d_type != DT_DIR){
+	  			printf ("%s\t", ent->d_name);
+	  		}
+	  	}
+	  	printf("\n");
+	  	closedir (dir);
+	} else {
+	  	/* could not open directory */
+	  	perror ("Shared folder not found.");
+	}
+}
+
 void DHT::ls_file(){
-	printf("Shared files :\n");
+	
 	DIR *dir;
 	struct dirent *ent;
 	if ((dir = opendir (shared_folder)) != NULL) {
@@ -150,7 +170,7 @@ void DHT::ls_file(){
 	  	while ((ent = readdir (dir)) != NULL) {
 	  		if(ent->d_type != DT_DIR){
 	  			files[string(SHA_1(ent->d_name).get())] = string(ent->d_name);
-	  			printf ("%s\t", ent->d_name);
+	  			// printf ("%s\t", ent->d_name);
 	  		}
 	  	}
 	  	printf("\n");
@@ -182,43 +202,76 @@ void DHT::insert(const Node& _node){
 }
 
 vector<Node> DHT::get_node(const SHA_1& _key){
-	vector<Node> list;
+	vector<Node> ret;
 	printf("[lookup] %s\n", _key.get());
 	string key = string(_key.get());
 	if(_key == local_id){
 		// local id
-		list.push_back(Node(local_ip, local_port, local_id));
+		ret.push_back(Node(local_ip, local_port, local_id));
 	}else if(nodes.count(key)){
 		// if target is in the list
-		list.push_back(nodes[key]);
+		ret.push_back(nodes[key]);
 	}else{
 		// return the closest k nodes
 		int d = distance(ID, _key);
-		while(list.size() < local_k && d <= 160){
+		int small_d = d-1;
+		while(ret.size() < local_k && d <= 160){
 			vector<Node> buck = buckets[d].get();
 			for(auto& n : buck){
-				list.push_back(n);
-				if(list.size() >= local_k){
+				ret.push_back(n);
+				if(ret.size() >= local_k){
 					break;
 				}
 			}
 			d++;
 		}
+		while(ret.size() < local_k && small_d > 0){
+			vector<Node> buck = buckets[small_d].get();
+			for(auto& n : buck){
+				ret.push_back(n);
+				if(ret.size() >= local_k){
+					break;
+				}
+			}
+			small_d--;
+		}
 	}
 
-	return list;
+	return ret;
 }
 
 string DHT::get_file(const SHA_1& _key){
+	ls_file();
+	char fname[File_size] = "";
 	if(files.count(string(_key.get()))){
-		printf("[file] %s\n", _key.get());
-		return files[string(_key.get())];
+		string ret = files[string(_key.get())];
+		
+		strcpy(fname, shared_folder);
+		strcpy(fname + strlen(fname), ret.c_str());
+
+		if(File(fname, 0)){
+			printf("[look file] %s\n", ret.c_str());
+			return ret;
+		}else{
+			files.erase(string(_key.get()));
+			// return "";
+		}
+		
 	}
+	// printf("File %s not found\n", fname);
 	return "";
 }
 
+void DHT::add_file(const SHA_1& _key, const char* _name){
+	if(!files.count(string(_key.get()))){
+		files[string(_key.get())] = string(_name);
+		printf("[add file] %s\n", _name);
+	}
+}
 
-
+// void DHT::remove_file(const SHA_1& _key){
+// 	files.remove(string(_key.get()));
+// }
 
 
 

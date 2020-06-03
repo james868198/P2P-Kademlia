@@ -95,30 +95,37 @@ void* RPC::requestThread(void * p){
 		}else if(!strcmp(rpc->msg, "STORE")){
 			sprintf(packet+strlen(packet), "%s|", rpc->key.get());
 
-			int buflen = strlen(packet) + rpc->len;
-			char* packet2 = new char [buflen];
+			string sfname = dht.get_file(rpc->key);
+			if(sfname != ""){
+				char fname[File_size] = "";
+				strcpy(fname, shared_folder);
+				strcpy(fname + strlen(fname), sfname.c_str());
+			    File file(fname, 0);
+			    if(file){
+			    	strcpy(rpc->name, sfname.c_str());
+					rpc->len = file.length();
+					int buflen = strlen(packet) + rpc->len;
+					char* packet2 = new char [buflen + 1];
 
-			sprintf(packet+strlen(packet), "%s|", rpc->name);
-			sprintf(packet+strlen(packet), "%d|", rpc->len);
-			csock.send(packet, strlen(packet));
-		    printf("<< %s\n", packet);
+					sprintf(packet+strlen(packet), "%s|", rpc->name);
+					sprintf(packet+strlen(packet), "%d|", rpc->len);
+					csock.send(packet, strlen(packet));
+				    printf("<< %s\n", packet);
 
-		    sprintf(packet2, "%s:%s:", local_ip, local_port);
-			sprintf(packet2+strlen(packet2), "%s", local_id.get());
-		    sprintf(packet2+strlen(packet2), "|%s|%c|",rpc->msg, '1');
-		    sprintf(packet2+strlen(packet2), "%s|", rpc->dstID.get());
-		    sprintf(packet2+strlen(packet2), "%s|", rpc->key.get());
-		    // memcpy(packet2+strlen(packet2), rpc->data, rpc->len);
-		    char fname[File_size] = "";
-			strcpy(fname, shared_folder);
-			strcpy(fname + strlen(fname), rpc->name);
-		    File file(fname);
-		    file.read(packet2+strlen(packet2), rpc->len);
-		    packet2[buflen] = '\0';
-		    csock.send(packet2, buflen);
-		    printf("<< %s\n", packet2);
-		    delete [] packet2;
-		    delete [] rpc->data;
+				    sprintf(packet2, "%s:%s:", local_ip, local_port);
+					sprintf(packet2+strlen(packet2), "%s", local_id.get());
+				    sprintf(packet2+strlen(packet2), "|%s|%c|",rpc->msg, '1');
+				    sprintf(packet2+strlen(packet2), "%s|", rpc->dstID.get());
+				    sprintf(packet2+strlen(packet2), "%s|", rpc->key.get());
+
+				    file.read(packet2 + strlen(packet2), rpc->len);
+				    packet2[buflen] = '\0';
+				    csock.send(packet2, buflen);
+				    printf("<< %s\n", packet2);
+				    delete [] packet2;
+
+			    }
+			}
 
 		}else if(!strcmp(rpc->msg, "FIND_NODE")){
 			sprintf(packet+strlen(packet), "%s|", rpc->ID.get());
@@ -138,8 +145,8 @@ void* RPC::requestThread(void * p){
 		    printf("\n");
 		    if(rpc->response){
 		    	rpc->rx_time = now;
-			    // rpc->response->print();
-			    vector<Node> nods = Node::parse(rpc->response->data);
+			    rpc->response->print();
+			    vector<Node> nods = Node::parse(rpc->response->data, rpc->response->dlen);
 			    bool found = false;
 			    for(auto& nod : nods){
 			    	printf("[back] %s:%s:%s\n", nod.ip, nod.port, nod.ID.get());
@@ -156,7 +163,7 @@ void* RPC::requestThread(void * p){
 		    			recurs->ID = local_id;
 						recurs->request();
 						if(rpc->ret == (void*)true){
-							rpc->ret = (void*) true;
+							rpc->ret = (void*)true;
 							break;
 						}
 				    	
@@ -212,6 +219,7 @@ void* RPC::respondThread(void * p){
 		if(!strcmp(rpc->msg, "PING")){
 			csock.send(packet, strlen(packet));
 		    printf("<< %s\n", packet);
+
 		}else if(!strcmp(rpc->msg, "STORE")){
 			// time threshold
 		    time(&rpc->tx_time);
@@ -226,7 +234,15 @@ void* RPC::respondThread(void * p){
 		    }
 		    printf("\n");
 		    if(rpc->response){
-		    	rpc->response->print();
+		    	// rpc->response->print();
+		    	char fname[File_size] = "";
+				strcpy(fname, shared_folder);
+				strcpy(fname + strlen(fname), rpc->name);
+			    File file(fname, 1);
+			    file.write(rpc->response->data, rpc->len);
+			    dht.add_file(rpc->key, rpc->name);
+			    delete [] rpc->response->data;
+			    delete rpc->response;
 		    }else{
 		    	printf("[timeout]\n");
 		    }
@@ -435,10 +451,10 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 			return NULL;
 		}
 		int len = _len+_buf-pos;
-		if(len > 0){
+		if(len >= 0){
+			ret->dlen = len;
 			ret->data = new char [len];
 			memcpy(ret->data, pos, len);
-			// strcpy(ret->data, pos);
 			printf("new [%d]\n", len);
 		}
 	}

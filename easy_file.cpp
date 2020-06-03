@@ -12,6 +12,23 @@ File::File(const char* filename){
 	}
 }
 
+File::File(const char* filename, int rw){
+
+	file.open(filename, std::fstream::in | std::fstream::out);
+	if(!file){
+		if(rw){
+			file.open(filename, std::fstream::out);
+			if(!file){
+		    	cerr << "Cannot open file " << filename << endl;
+		    	this->~File();
+			}
+		}else{
+			cerr << "File " << filename << " not found" << endl;
+	    	// this->~File();
+		}
+	}
+}
+
 File::~File(){
 	if(file){
 		file.close();

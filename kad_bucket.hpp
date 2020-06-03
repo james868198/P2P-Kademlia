@@ -22,7 +22,7 @@ public:
 	Node(){};
 	Node(const char* _ip, const char* _port, const SHA_1 _id);
 	bool operator == (const Node& _a) const ;
-	static vector<Node> parse(const char* _data);
+	static vector<Node> parse(const char* _data, int _len);
 };
 
 class K_Buck{
@@ -51,13 +51,18 @@ public:
 	DHT(){};
 	DHT(const SHA_1& _key);
 	void join();
+
 	void insert(const Node& _node);
 	bool contain(const Node& _node);
-
 	vector<Node> get_node(const SHA_1& _key);
-	string get_file(const SHA_1& _key);
-	void ls_file();
 
+	string get_file(const SHA_1& _key);
+	void add_file(const SHA_1& _key, const char* _name);
+	// void remove_file(const SHA_1& _key);
+
+	void ls_file();
+	void print_file();
+	
 };
 
 

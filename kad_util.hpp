@@ -71,12 +71,13 @@ public:
 	char 	ack;
 	SHA_1 	dstID;
 	// ---------------------------
-	char* 	data;
 	SHA_1 	key;	// key, value
 	char 	name[File_size] = "";	// filename
 	int 	len = 0;	// file length
 	SHA_1 	ID;	// node id
-
+	// ---------------------------
+	char* 	data;
+	int 	dlen = 0;
 	RPC* 	response = 0;
 
 	RPC(){};

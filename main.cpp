@@ -79,7 +79,7 @@ void cmd_handle(const char* _cmd){
 	tok = strstr(pos, " ");
 	if(!tok){
 		if(!strcmp(_cmd, "ls")){
-			dht.ls_file();
+			dht.print_file();
 		}else{
 
 		}
@@ -104,22 +104,9 @@ void cmd_handle(const char* _cmd){
 				n = tok - pos;
 				strncpy(fname, pos, n);	pos += n+1;
 				SHA_1 fid = SHA_1(fname);
-				string strfname = dht.get_file(fid);
-				if(strfname != ""){
-					char fname2[File_size] = "";
-					strcpy(fname2, shared_folder);
-					strcpy(fname2 + strlen(fname2), fname);
-					File file(fname2);
-					if(file){
-						RPC* rpc = new RPC(pos, "STORE", '0', false);
-						rpc->key = fid;
-						strcpy(rpc->name, fname);
-						rpc->len = file.length();
-						// rpc->data = new char [rpc->len];
-						// file.read(rpc->data, rpc->len);
-						rpc->request();
-					}
-				}
+				RPC* rpc = new RPC(pos, "STORE", '0', false);
+				rpc->key = fid;
+				rpc->request();
 			}
 
 		}else if(!strcmp(cmd, "get")){
