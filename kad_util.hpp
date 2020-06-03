@@ -61,8 +61,8 @@ private:
 	
 	void* ret;
 public:
-	bool block;
-	
+	bool 	block = false;
+
 	char 	ip[IP_size] = "";
 	char 	port[PORT_size] = "";
 	SHA_1 	srcID;
@@ -73,7 +73,7 @@ public:
 	// ---------------------------
 	char* 	data;
 	SHA_1 	key;	// key, value
-	char 	name[256] = "";	// filename
+	char 	name[File_size] = "";	// filename
 	int 	len = 0;	// file length
 	SHA_1 	ID;	// node id
 
@@ -85,7 +85,7 @@ public:
 
 	void* request();
 	void* respond();
-	void print();
+	void print() const;
 	void* get_response(){ return ret; };
 	static bool match(const RPC* _a, const RPC* _b);
 	static void* requestThread(void * p);

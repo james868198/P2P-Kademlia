@@ -50,8 +50,10 @@ void* RPC::request(){
 	if(block){
 		pthread_join(thread_ID, &ret);
 		return ret;
+	}else{
+		// delete this;
+		return NULL;
 	}
-	return NULL;
 }
 
 void* RPC::requestThread(void * p){
@@ -88,12 +90,35 @@ void* RPC::requestThread(void * p){
 		    	rpc->ret = (void*) true;
 			    delete rpc->response;
 		    }else{
-		    	printf("[time exceeded]\n");
+		    	printf("[timeout]\n");
 		    }
 		}else if(!strcmp(rpc->msg, "STORE")){
-			// wait for following msg
-			while(rpc->ack == '0')
-				usleep(1000);
+			sprintf(packet+strlen(packet), "%s|", rpc->key.get());
+
+			int buflen = strlen(packet) + rpc->len;
+			char* packet2 = new char [buflen];
+
+			sprintf(packet+strlen(packet), "%s|", rpc->name);
+			sprintf(packet+strlen(packet), "%d|", rpc->len);
+			csock.send(packet, strlen(packet));
+		    printf("<< %s\n", packet);
+
+		    sprintf(packet2, "%s:%s:", local_ip, local_port);
+			sprintf(packet2+strlen(packet2), "%s", local_id.get());
+		    sprintf(packet2+strlen(packet2), "|%s|%c|",rpc->msg, '1');
+		    sprintf(packet2+strlen(packet2), "%s|", rpc->dstID.get());
+		    sprintf(packet2+strlen(packet2), "%s|", rpc->key.get());
+		    // memcpy(packet2+strlen(packet2), rpc->data, rpc->len);
+		    char fname[File_size] = "";
+			strcpy(fname, shared_folder);
+			strcpy(fname + strlen(fname), rpc->name);
+		    File file(fname);
+		    file.read(packet2+strlen(packet2), rpc->len);
+		    packet2[buflen] = '\0';
+		    csock.send(packet2, buflen);
+		    printf("<< %s\n", packet2);
+		    delete [] packet2;
+		    delete [] rpc->data;
 
 		}else if(!strcmp(rpc->msg, "FIND_NODE")){
 			sprintf(packet+strlen(packet), "%s|", rpc->ID.get());
@@ -141,7 +166,7 @@ void* RPC::requestThread(void * p){
 			    delete [] rpc->response->data;
 			    delete rpc->response;
 		    }else{
-		    	printf("[time exceeded]\n");
+		    	printf("[timeout]\n");
 		    }
 		}else if(!strcmp(rpc->msg, "FIND_VALUE")){
 
@@ -158,19 +183,28 @@ void* RPC::requestThread(void * p){
 }
 
 void* RPC::respond(){
+	rpc_mng.push(this);
 	pthread_create(&thread_ID, NULL, (THREADFUNCPTR)RPC::respondThread, (void*)this);
-	return NULL;
+	if(block){
+		// pthread_join(thread_ID, &ret);
+		return ret;
+	}else{
+		// delete this;
+		return NULL;
+	}
 }
 
 void* RPC::respondThread(void * p){
 
 	RPC* rpc = (RPC*)p;
-	rpc->ack = '1';
+	// rpc->ack = '1';
 	// needs response
 	char packet[2048] = "";
 	sprintf(packet, "%s:%s:", local_ip, local_port);
 	sprintf(packet+strlen(packet), "%s", local_id.get());
-    sprintf(packet+strlen(packet), "|%s|%c|",rpc->msg, rpc->ack);
+    sprintf(packet+strlen(packet), "|%s|%c|",rpc->msg, '1');
+
+    char* ack_ptr = packet+strlen(packet) - 2;
     sprintf(packet+strlen(packet), "%s|", rpc->srcID.get());
 
     Client_socket csock(rpc->ip, rpc->port);
@@ -179,7 +213,23 @@ void* RPC::respondThread(void * p){
 			csock.send(packet, strlen(packet));
 		    printf("<< %s\n", packet);
 		}else if(!strcmp(rpc->msg, "STORE")){
-
+			// time threshold
+		    time(&rpc->tx_time);
+		    time_t now;
+		    time(&now);
+		    int rtt = abs(int(difftime(now, rpc->tx_time)));
+		    // wait for response
+		    while((!rpc->response) && (rtt < t_Threshold)){
+		    	usleep(1000);
+		    	time(&now);
+		    	rtt = abs(int(difftime(now, rpc->tx_time)));
+		    }
+		    printf("\n");
+		    if(rpc->response){
+		    	rpc->response->print();
+		    }else{
+		    	printf("[timeout]\n");
+		    }
 
 		}else if(!strcmp(rpc->msg, "FIND_NODE")){
 			// get node ip and port from the routing tree
@@ -200,30 +250,43 @@ void* RPC::respondThread(void * p){
 		}
 	}
 	dht.insert(Node(rpc->ip, rpc->port, rpc->srcID));
+
+	rpc_mng.remove(rpc);
+	if(!rpc->block){
+		delete rpc;
+	}
 	return nullptr;
 }
 
-void RPC::print(){
-	printf("ip    :%s\n", ip);
-	printf("port  :%s\n", port);
-	printf("srcID :%s\n", srcID.get());
-	printf("msg   :%s\n", msg);
-	printf("ack   :%c\n", ack);
-	printf("dstID :%s\n", dstID.get());
-	printf("data  :%s\n", data);
+void RPC::print() const {
+	printf("ip    : %s\n", ip);
+	printf("port  : %s\n", port);
+	printf("srcID : %s\n", srcID.get());
+	printf("msg   : %s\n", msg);
+	printf("ack   : %c\n", ack);
+	printf("dstID : %s\n", dstID.get());
+	printf("key   : %s\n", key.get());
+	printf("data  : %s\n", data);
 }
 
 bool RPC::match(const RPC* _a, const RPC* _b){
-	if(_a->srcID != _b->dstID){
+	// printf("\n\na:\n");
+	// _a->print();
+	// printf("\n\nb:\n");
+	// _b->print();
+	
+	if(	(_a->srcID == _b->dstID) && (_a->dstID == _b->srcID) &&
+	 	!strcmp(_a->msg, _b->msg) && (_a->ack != _b->ack)){
+		return true;
+
+	}else if(	(_a->srcID == _b->srcID) && (_a->dstID == _b->dstID) && 
+				!strcmp(_a->msg, "STORE") && !strcmp(_b->msg, "STORE") && 
+				(_a->ack != _b->ack) && (_a->key == _b->key)){
+		return true;
+
+	}else{
 		return false;
 	}
-	if(_a->dstID != _b->srcID){
-		return false;
-	}
-	if(strcmp(_a->msg, _b->msg)){
-		return false;
-	}
-	return true;
 }
 
 // ==========================================================================================
@@ -243,7 +306,7 @@ void RPC_Manager::handle(const char* _buf, const int _len){
 		printf("rpc received.\n");
 		if(rpc->ack == '0'){
 			rpc->respond();
-			delete rpc;
+			// delete rpc;
 		}else{
 			RPC* it = 0;
 			for(auto& _r : RPC_list){
@@ -317,6 +380,7 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 			char num[64] = "";
 			strncpy(num, pos, _buf+_len-pos);
 			ret->len = atoi(num);
+			ret->block = true;
 		}else if(!strcmp(ret->msg, "FIND_NODE")){
 			if(!(n = strstr(pos, "|") - pos)){
 				delete ret;
@@ -384,12 +448,14 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 
 void RPC_Manager::push(RPC* _rpc){
 	RPC_list.push_back(_rpc);
+	printf("[push] size: %d\n", int(RPC_list.size()));
 }
 
 void RPC_Manager::remove(RPC* _rpc){
 	for(auto it=RPC_list.begin(); it!=RPC_list.end(); ++it){
 		if(*it == _rpc){
 			RPC_list.erase(it);
+			printf("[pop] size: %d\n", int(RPC_list.size()));
 			break;
 		}
 	}

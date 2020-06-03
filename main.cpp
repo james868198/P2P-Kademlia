@@ -88,12 +88,41 @@ void cmd_handle(const char* _cmd){
 		char cmd[1024] = "";
 		strncpy(cmd, pos, n); 	pos += n+1;
 		if(!strcmp(cmd, "ping")){
+			// e.g. ping 192.168.1.37:8888
 			RPC* rpc = new RPC(pos, "PING", '0', true);
 			rpc->request();
 			bool ret = (bool)rpc->get_response();
 			printf("ping %s ---- %s!\n", pos, (ret ? "Yes" : "No"));
 			delete rpc;
-		}else if(!strcmp(cmd, "find")){
+
+		}else if(!strcmp(cmd, "store")){
+			// e.g. store file1.txt 192.168.1.37:8888
+			char fname[File_size] = "";
+			
+			tok = strstr(pos, " ");
+			if(tok){
+				n = tok - pos;
+				strncpy(fname, pos, n);	pos += n+1;
+				SHA_1 fid = SHA_1(fname);
+				string strfname = dht.get_file(fid);
+				if(strfname != ""){
+					char fname2[File_size] = "";
+					strcpy(fname2, shared_folder);
+					strcpy(fname2 + strlen(fname2), fname);
+					File file(fname2);
+					if(file){
+						RPC* rpc = new RPC(pos, "STORE", '0', false);
+						rpc->key = fid;
+						strcpy(rpc->name, fname);
+						rpc->len = file.length();
+						// rpc->data = new char [rpc->len];
+						// file.read(rpc->data, rpc->len);
+						rpc->request();
+					}
+				}
+			}
+
+		}else if(!strcmp(cmd, "get")){
 			RPC* rpc = new RPC(pos, "PING", '0', true);
 			rpc->request();
 			bool ret = (bool)rpc->get_response();

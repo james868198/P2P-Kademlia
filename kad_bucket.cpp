@@ -149,6 +149,7 @@ void DHT::ls_file(){
 	  	/* print all the files and directories within directory */
 	  	while ((ent = readdir (dir)) != NULL) {
 	  		if(ent->d_type != DT_DIR){
+	  			files[string(SHA_1(ent->d_name).get())] = string(ent->d_name);
 	  			printf ("%s\t", ent->d_name);
 	  		}
 	  	}
@@ -209,6 +210,10 @@ vector<Node> DHT::get_node(const SHA_1& _key){
 }
 
 string DHT::get_file(const SHA_1& _key){
+	if(files.count(string(_key.get()))){
+		printf("[file] %s\n", _key.get());
+		return files[string(_key.get())];
+	}
 	return "";
 }
 
