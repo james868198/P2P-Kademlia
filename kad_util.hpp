@@ -14,15 +14,16 @@
 #include <memory>		//unique_ptr
 #include <set>
 
+#include <chrono>
 using namespace std;
-
+using namespace std::chrono;
 
 #define IP_size 32
 #define PORT_size 32
 #define File_size 256
 #define Head_size 0
 
-#define t_Threshold 10
+#define t_Threshold (10)
 
 typedef void * (*THREADFUNCPTR)(void *);
 
@@ -63,8 +64,8 @@ public:
 
 class RPC{
 private:
-	clock_t tx_time;
-	clock_t rx_time;
+	steady_clock::time_point tx_time;
+	steady_clock::time_point rx_time; 
 
 	pthread_t thread_ID = 0;
 	
@@ -142,6 +143,7 @@ extern int local_alpha;
 extern char shared_folder[File_size];
 extern char download_folder[File_size];
 
+// extern float CLOCK_PS;
 // extern RPC_Manager rpc_mng;
 extern RPC_Manager rpc_mng;
 extern DHT dht;

@@ -38,6 +38,7 @@ int main(int argc, char* argv[]){
 	printf("==================================================\n");
 	printf("            Welcome to P2P-Kademlia\n");
 	printf("==================================================\n");
+
 	//print GMT time
 	char gtime[30] = "";
 	print_time(gtime);
@@ -47,12 +48,11 @@ int main(int argc, char* argv[]){
 	if(!get_config(config_file)){
 		return 1;
 	}
-
 	// create udp server
 	pthread_t server_ID = 0;
 	pthread_create(&server_ID, NULL, serverThread, NULL);
-	usleep(100000);
-
+	usleep(10000);
+	
 	// printf("-----------------------------------\n");
 	printf("Waiting for command:\n");
 	char cmd[1024] = "";
