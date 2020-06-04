@@ -80,6 +80,14 @@ void cmd_handle(const char* _cmd){
 	if(!tok){
 		if(!strcmp(_cmd, "ls")){
 			dht.print_file();
+		}else if(!strcmp(_cmd, "getBuckets")){
+			printf("%08.0f [bucket list] ", time_stamp());
+			dht.print_all();
+
+		}else if(!strcmp(_cmd, "getAddr")){
+			// e.g. getAddr
+			printf("%08.0f [local address] %s:%s\n", time_stamp(), local_ip, local_port);
+			
 		}else{
 
 		}
@@ -87,13 +95,14 @@ void cmd_handle(const char* _cmd){
 		n = tok - pos;
 		char cmd[1024] = "";
 		strncpy(cmd, pos, n); 	pos += n+1;
+
 		if(!strcmp(cmd, "ping")){
 			// e.g. ping 192.168.1.37:8888
 			bool ret = 0;
 			RPC* rpc = new RPC(pos, "PING", '0', true);
 			rpc->ret = &ret;
 			ret = rpc->request();
-			printf("ping %s ---- %s!\n", pos, (ret ? "Yes" : "No"));
+			printf("%08.0f [ping] %s --- %s %8.4fs\n", time_stamp(), pos, (ret ? "Yes" : "No"), rpc->rtt);
 			delete rpc;
 
 		}else if(!strcmp(cmd, "store")){
@@ -104,9 +113,7 @@ void cmd_handle(const char* _cmd){
 				n = tok - pos;
 				strncpy(fname, pos, n);	pos += n+1;
 				SHA_1 fid = SHA_1(fname);
-				// bool ret = 0;
 				RPC* rpc = new RPC(pos, "STORE", '0', false);
-				// rpc->ret = &ret;
 				rpc->key = fid;
 				rpc->request();
 			}
@@ -119,11 +126,15 @@ void cmd_handle(const char* _cmd){
 			bool ret = 0;
 			RPC* rpc = new RPC("", "FIND_VALUE", '0', true);
 			rpc->key = fid;
-			// rpc->ret = &ret;
 			ret = rpc->request();
+			printf("%08.0f [get] %s --- %s %8.4fs\n", time_stamp(), fname, ((bool)ret ? "Yes" : "No"), rpc->rtt);
 			delete rpc;
-			printf("get %s ---- %s!\n", fname, ((bool)ret ? "Yes" : "No"));
 			
+		}else if(!strcmp(cmd, "getBucket")){
+			// e.g. getAddr
+			int num = atoi(pos);
+			printf("%08.0f [bucket] %3d:", time_stamp(), num);
+			dht.print_buck(num);
 		}
 	}
 }

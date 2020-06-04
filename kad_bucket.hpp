@@ -9,7 +9,8 @@
 #include <sys/stat.h>	//mkdir()
 #include <dirent.h>
 #include "kad_util.hpp"
-
+#include <pthread.h>
+// #include <unistd .h>
 
 class SHA_1;
 
@@ -31,6 +32,7 @@ public:
 	};
 	bool operator == (const Node& _a) const ;
 	static vector<Node> parse(const char* _data, int _len);
+	void print();
 };
 
 class K_Buck{
@@ -43,6 +45,7 @@ public:
 	K_Buck(int _k);
 	vector<Node> get();
 	bool insert(const Node& _node);
+	void print(const char end = '\n');
 };
 
 class DHT{
@@ -51,6 +54,8 @@ class DHT{
 	unordered_map<string, Node> nodes;
 	unordered_map<string, string> files;
 	vector<K_Buck> buckets;
+
+	pthread_mutex_t lock;
 
 	static int distance(const SHA_1& _a, const SHA_1& _b);
 	int distance(const SHA_1& _key);
@@ -72,7 +77,8 @@ public:
 
 	void ls_file();
 	void print_file();
-
+	void print_all();
+	void print_buck(int _n);
 };
 
 

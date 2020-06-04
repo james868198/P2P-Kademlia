@@ -35,6 +35,10 @@ vector<Node> Node::parse(const char* _data, int _len){
 	return ret;
 }
 
+void Node::print(){
+	printf("(%s:%s:%s)", ip, port, ID.get());
+}
+
 K_Buck::K_Buck(int _k){
 	k = _k;
 }
@@ -72,6 +76,17 @@ bool K_Buck::insert(const Node& _node){
 			return true;
 		}
 	}
+}
+
+void K_Buck::print(const char end){
+	printf("[");
+	for(auto it=nodes.begin(); it!=nodes.end(); ++it){
+		if(it!=nodes.begin()){
+			printf(", ");
+		}
+		it->print();
+	}
+	printf("]%c", end);
 }
 
 int DHT::distance(const SHA_1& _a, const SHA_1& _b){
@@ -119,7 +134,7 @@ int DHT::distance(const SHA_1& _key){
 
 DHT::DHT(const SHA_1& _key){
 	// initialize the DHT
-	
+	pthread_mutex_init(&lock , NULL);
 	buckets = vector<K_Buck>(161, K_Buck(local_k));
 
 	ID = _key;
@@ -199,26 +214,32 @@ bool DHT::contain(const Node& _node){
 void DHT::insert(const Node& _node){
 
 	int d = distance(ID, _node.ID);
+	pthread_mutex_lock(&lock);
 	if(!contain(_node)){
 		if(buckets[d].insert(_node)){
 			nodes[string(_node.ID.get())] = _node;
-			printf("[insert] %s --> bucket[%d]\n", _node.ID.get(), d);
+			printf("%08.0f [insert] %s --> bucket[%d]\n", time_stamp(), _node.ID.get(), d);
 		}
 	}
+	pthread_mutex_unlock(&lock);
 }
 Node DHT::get(const SHA_1& _key){
 	string k = string(_key.get());
+	pthread_mutex_lock(&lock);
+	Node ret;
 	if(nodes.count(k)){
-		return nodes[k];
-	}else{
-		return Node();
+		ret = nodes[k];
 	}
+	pthread_mutex_unlock(&lock);
+	return ret;
 }
 
 vector<Node> DHT::get_node(const SHA_1& _key){
+
 	vector<Node> ret;
-	printf("[lookup] %s\n", _key.get());
+	printf("%08.0f [lookup] %s\n", time_stamp(), _key.get());
 	string key = string(_key.get());
+	pthread_mutex_lock(&lock);
 	if(_key == local_id){
 		// local id
 		ret.push_back(Node(local_ip, local_port, local_id));
@@ -253,7 +274,7 @@ vector<Node> DHT::get_node(const SHA_1& _key){
 			small_d--;
 		}
 	}
-
+	pthread_mutex_unlock(&lock);
 	return ret;
 }
 
@@ -267,7 +288,7 @@ string DHT::get_file(const SHA_1& _key){
 		strcpy(fname + strlen(fname), ret.c_str());
 
 		if(File(fname, 0)){
-			printf("[look file] %s\n", ret.c_str());
+			printf("%08.0f [look file] %s\n", time_stamp(), ret.c_str());
 			return ret;
 		}else{
 			files.erase(string(_key.get()));
@@ -282,14 +303,25 @@ string DHT::get_file(const SHA_1& _key){
 void DHT::add_file(const SHA_1& _key, const char* _name){
 	if(!files.count(string(_key.get()))){
 		files[string(_key.get())] = string(_name);
-		printf("[add file] %s\n", _name);
+		printf("%08.0f [add file] %s\n", time_stamp(), _name);
 	}
 }
 
-// void DHT::remove_file(const SHA_1& _key){
-// 	files.remove(string(_key.get()));
-// }
+void DHT::print_all(){
+	printf("\n[\n");
+	for(int i=0; i<buckets.size(); i++){
+		printf(" %3d:", i);
+		buckets[i].print(' ');
+		if(i<buckets.size()-1){
+			printf(",\n");
+		}
+	}
+	printf("\n]\n");
+}
 
+void DHT::print_buck(int _n){
+	buckets[_n].print();
+}
 
 
 

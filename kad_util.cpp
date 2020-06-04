@@ -17,7 +17,6 @@ int 	local_alpha 				= 0;
 char 	shared_folder[File_size] 	= "Shared/";
 char 	download_folder[File_size] 	= "Download/";
 
-
 // ==========================================================================================
 
 // ==========================================================================================
@@ -77,25 +76,25 @@ void* RPC::requestThread(void * p){
 			if(csock){
 				sprintf(pack_ptr, "%s|", rpc->dstID.get());
 			    csock.send(packet, strlen(packet));
-			    printf("<< %s\n", packet);
 			    // time threshold
-			    time(&rpc->tx_time);
-			    time_t now;
-			    time(&now);
-			    int rtt = abs(int(difftime(now, rpc->tx_time)));
+			    
+			    rpc->tx_time = clock();
+			    float rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
+			    printf("<< %s\n", packet);
+
 			    // wait for response
 			    while((!rpc->response) && (rtt < t_Threshold)){
 			    	usleep(1000);
-			    	time(&now);
-			    	rtt = abs(int(difftime(now, rpc->tx_time)));
+			    	rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
 			    }
 			    printf("\n");
 			    if(rpc->response){
 			    	// (*(bool*)rpc->ret) = (void*) true;
+			    	rpc->rtt = rtt;
 			    	retval = true;
 				    delete rpc->response;
 			    }else{
-			    	printf("[timeout]\n");
+			    	printf("%08.0f [timeout]\n", time_stamp());
 			    }
 			}
 		}
@@ -150,26 +149,25 @@ void* RPC::requestThread(void * p){
 				sprintf(pack_ptr, "%s|", rpc->dstID.get());
 				sprintf(packet+strlen(packet), "%s|", rpc->ID.get());
 				csock.send(packet, strlen(packet));
-			    printf("<< %s\n", packet);
+			    
 			    // time threshold
-			    time(&rpc->tx_time);
-			    time_t now;
-			    time(&now);
-			    int rtt = abs(int(difftime(now, rpc->tx_time)));
+			    rpc->tx_time = clock();
+			    float rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
+			    printf("<< %s\n", packet);
 			    // wait for response
 			    while((!rpc->response) && (rtt < t_Threshold)){
 			    	usleep(1000);
-			    	time(&now);
-			    	rtt = abs(int(difftime(now, rpc->tx_time)));
+			    	rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
 			    }
 			    printf("\n");
 			    if(rpc->response){
-			    	rpc->rx_time = now;
+			    	// rpc->rx_time = now;
+			    	rpc->rtt = rtt;
 				    // rpc->response->print();
 				    int closer = 0;
 				    vector<Node> nods = Node::parse(rpc->response->data, rpc->response->dlen);
 				    for(auto& nod : nods){
-				    	printf("[back] %s:%s:%s\n", nod.ip, nod.port, nod.ID.get());
+				    	// printf("[back] %s:%s:%s\n", nod.ip, nod.port, nod.ID.get());
 				    	if(!dht.contain(nod)){
 				    		closer++;
 				    	}
@@ -191,7 +189,7 @@ void* RPC::requestThread(void * p){
 				    	// *rpc->ret = (void*)false;
 				    }
 			    }else{
-			    	printf("[timeout]\n");
+			    	printf("%08.0f [timeout]\n", time_stamp());
 			    }	
 			}
 		}else{
@@ -200,8 +198,7 @@ void* RPC::requestThread(void * p){
 			vector<Node> ids = dht.get_node(rpc->ID);
 			int closer = 0;
 			bool found = false;
-			time(&rpc->tx_time);
-			time_t now;
+
 			auto it=ids.begin();
 			for(; it!=ids.end() && closer<local_k; ++it){
 				string str = string(it->ID.get());
@@ -215,22 +212,22 @@ void* RPC::requestThread(void * p){
 	                usleep(1000);
 	            }
 	        }
-		    time(&now);
-		    int rtt = abs(int(difftime(now, rpc->tx_time)));
+		    rpc->tx_time = clock();
+		    float rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
 		    // wait for response
 		    while((closer<local_k) && (rtt < t_Threshold+3)){
 		    	usleep(1000);
-		    	time(&now);
-		    	rtt = abs(int(difftime(now, rpc->tx_time)));
+		    	rtt = rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
 		    }
 		    printf("\n");
 		    if(closer >= local_k){
-		    	rpc->rx_time = now;
+		    	rpc->rtt = rtt;
+		    	// rpc->rx_time = now;
 		    	// (*(bool*)rpc->ret) = (void*) true;
 		    	retval = true;
 		    }else{
 		    	// rpc->ret = (void*)false;
-		    	printf("[timeout]\n");
+		    	printf("%08.0f [timeout]\n", time_stamp());
 		    }
 		}
 		
@@ -249,19 +246,17 @@ void* RPC::requestThread(void * p){
 					csock.send(packet, strlen(packet));
 				    printf("<< %s\n", packet);
 				    // time threshold
-				    time(&rpc->tx_time);
-				    time_t now;
-				    time(&now);
-				    int rtt = abs(int(difftime(now, rpc->tx_time)));
+				    rpc->tx_time = clock();
+		    		float rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
 				    // wait for response
 				    while((!rpc->response) && (rtt < t_Threshold)){
 				    	usleep(1000);
-				    	time(&now);
-				    	rtt = abs(int(difftime(now, rpc->tx_time)));
+				    	rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
 				    }
 				    printf("\n");
 				    if(rpc->response){
-				    	rpc->rx_time = now;
+				    	rpc->rtt = rtt;
+				    	// rpc->rx_time = now;
 				    	if(rpc->response->ack == '2'){
 				    		// (*(bool*)rpc->ret) = (void*)true;
 				    		retval = true;
@@ -271,7 +266,7 @@ void* RPC::requestThread(void * p){
 				    	}else if(rpc->response->ack == '1'){
 						    vector<Node> nods = Node::parse(rpc->response->data, rpc->response->dlen);
 						    for(auto& nod : nods){
-						    	printf("[back] %s:%s:%s\n", nod.ip, nod.port, nod.ID.get());
+						    	// printf("[back] %s:%s:%s\n", nod.ip, nod.port, nod.ID.get());
 						    	if(rpc->param){
 						    		((vector<Node>*)rpc->param)->push_back(nod);
 						    	}
@@ -281,7 +276,7 @@ void* RPC::requestThread(void * p){
 					    	delete rpc->response;
 					    }
 				    }else{
-				    	printf("[timeout]\n");
+				    	printf("%08.0f [timeout]\n", time_stamp());
 				    }
 				}	
 			}else{
@@ -289,8 +284,8 @@ void* RPC::requestThread(void * p){
 				vector<Node> ids = dht.get_node(rpc->key);
 				unordered_map<string, int> seen;
 				bool found = false;
-				time(&rpc->tx_time);
-				time_t now;
+				rpc->tx_time = clock();
+	    		float rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
 				auto it=ids.begin();
 				for(; it!=ids.end() && !found; ++it){
 					string str = string(it->ID.get());
@@ -304,22 +299,20 @@ void* RPC::requestThread(void * p){
 		                usleep(1000);
 		            }
 		        }
-		        time(&now);
-			    int rtt = abs(int(difftime(now, rpc->tx_time)));
 			    // wait for response
 			    while((!found) && (rtt < t_Threshold+3)){
 			    	usleep(1000);
-			    	time(&now);
-			    	rtt = abs(int(difftime(now, rpc->tx_time)));
+			    	rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
 			    }
 			    printf("\n");
 			    if(found){
-			    	rpc->rx_time = now;
+			    	rpc->rtt = rtt;
+			    	// rpc->rx_time = now;
 			    	// (*(bool*)rpc->ret) = (void*) true;
 			    	retval = true;
 			    }else{
 			    	// rpc->ret = (void*)false;
-			    	printf("[timeout]\n");
+			    	printf("%08.0f [timeout]\n", time_stamp());
 			    }
 			}
 			
@@ -329,9 +322,11 @@ void* RPC::requestThread(void * p){
 	}
 
 	rpc_mng.remove(rpc);
+	// (*(bool*)rpc->ret) = (void*) retval;
 	if(!rpc->block){
 		delete rpc;
 	}
+
 	return (void*)retval;
 	// return NULL;
 }
@@ -370,19 +365,17 @@ void* RPC::respondThread(void * p){
 
 		}else if(!strcmp(rpc->msg, "STORE")){
 			// time threshold
-		    time(&rpc->tx_time);
-		    time_t now;
-		    time(&now);
-		    int rtt = abs(int(difftime(now, rpc->tx_time)));
+		    rpc->tx_time = clock();
+    		float rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
 		    // wait for response
 		    while((!rpc->response) && (rtt < t_Threshold)){
 		    	usleep(1000);
-		    	time(&now);
-		    	rtt = abs(int(difftime(now, rpc->tx_time)));
+		    	rtt = ((float)clock() - rpc->tx_time)/CLOCKS_PER_SEC;
 		    }
 		    printf("\n");
 		    if(rpc->response){
 		    	// rpc->response->print();
+		    	rpc->rtt = rtt;
 		    	char fname[File_size] = "";
 				strcpy(fname, shared_folder);
 				strcpy(fname + strlen(fname), rpc->name);
@@ -392,7 +385,7 @@ void* RPC::respondThread(void * p){
 			    delete [] rpc->response->data;
 			    delete rpc->response;
 		    }else{
-		    	printf("[timeout]\n");
+		    	printf("%08.0f [timeout]\n", time_stamp());
 		    }
 
 		}else if(!strcmp(rpc->msg, "FIND_NODE")){
@@ -435,6 +428,7 @@ void* RPC::respondThread(void * p){
 	dht.insert(Node(rpc->ip, rpc->port, rpc->srcID));
 
 	rpc_mng.remove(rpc);
+	// *(rpc->ret) = retval;
 	if(!rpc->block){
 		delete rpc;
 	}
@@ -479,12 +473,12 @@ void RPC_Manager::handle(const char* _buf, const int _len){
 
 	RPC* rpc = resolve(_buf, _len);
 	if(!rpc){
-		printf("[drop]\n");
+		printf("%08.0f [drop]\n", time_stamp());
 		return;
 	}
 	if(local_id != rpc->dstID){
 		// discard
-		printf("[drop]\n");
+		printf("%08.0f [drop]\n", time_stamp());
 	}else{
 		// printf("rpc received.\n");
 		if(rpc->ack == '0'){
@@ -493,14 +487,14 @@ void RPC_Manager::handle(const char* _buf, const int _len){
 			RPC* it = 0;
 			for(auto& _r : RPC_list){
 				if(RPC::match(_r, rpc)){
-					printf("[match]\n");
+					// printf("[match]\n");
 					_r->response = rpc;
 					it = _r;
 					break;
 				}
 			}
 			if(!it){
-				printf("[no match]\n");
+				// printf("[no match]\n");
 				delete rpc;
 			}
 		}
@@ -630,14 +624,14 @@ RPC* RPC_Manager::resolve(const char* _buf, const int _len){
 
 void RPC_Manager::push(RPC* _rpc){
 	RPC_list.push_back(_rpc);
-	printf("[push] size: %d\n", int(RPC_list.size()));
+	// printf("[push] size: %d\n", int(RPC_list.size()));
 }
 
 void RPC_Manager::remove(RPC* _rpc){
 	for(auto it=RPC_list.begin(); it!=RPC_list.end(); ++it){
 		if(*it == _rpc){
 			RPC_list.erase(it);
-			printf("[pop] size: %d\n", int(RPC_list.size()));
+			// printf("[pop] size: %d\n", int(RPC_list.size()));
 			break;
 		}
 	}
@@ -783,6 +777,11 @@ bool get_config(const char* filename){
 		dht.join();
 	}
 	return true;
+}
+
+const float time_stamp(){
+	static clock_t t;
+	return (float)(clock() - t);
 }
 
 const char* stripp(const char* _ip, const char* _port){

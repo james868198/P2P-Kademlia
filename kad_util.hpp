@@ -63,8 +63,8 @@ public:
 
 class RPC{
 private:
-	time_t tx_time;
-	time_t rx_time;
+	clock_t tx_time;
+	clock_t rx_time;
 
 	pthread_t thread_ID = 0;
 	
@@ -94,7 +94,7 @@ public:
 	void*	param = 0;
 	void*	val = 0;
 	void* 	ret;
-
+	float	rtt = 0;
 	RPC(){};
 	RPC(const SHA_1& _id, const char* _msg, const char _ack, bool _block);
 	RPC(const char* _ipp, const char* _msg, const char _ack, bool _block);
@@ -126,7 +126,7 @@ bool get_config(const char* filename);
 void* serverThread(void* p);
 void* RPCThread(void * p);
 const char* stripp(const char* _ip, const char* _port);
-
+const float time_stamp();
 // variables
 
 extern bool RUNNING;
