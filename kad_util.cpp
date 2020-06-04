@@ -78,7 +78,7 @@ void* RPC::requestThread(void * p){
 			    
 			    rpc->tx_time = steady_clock::now();
 			    float rtt = duration_cast<duration<double>>(steady_clock::now() - rpc->tx_time).count();
-			    printf("<< %s\n", packet);
+			    printf("\n<< %s\n", packet);
 
 			    // wait for response
 			    while((!rpc->response) && (rtt < t_Threshold)){
@@ -86,7 +86,6 @@ void* RPC::requestThread(void * p){
 			    	rtt = duration_cast<duration<double>>(steady_clock::now() - rpc->tx_time).count();
 
 			    }
-			    printf("\n");
 			    if(rpc->response){
 			    	rpc->rtt = rtt;
 			    	retval = true;
@@ -120,7 +119,7 @@ void* RPC::requestThread(void * p){
 						sprintf(packet+strlen(packet), "%s|", rpc->name);
 						sprintf(packet+strlen(packet), "%d|", rpc->len);
 						csock.send(packet, strlen(packet));
-					    printf("<< %s\n", packet);
+					    printf("\n<< %s\n", packet);
 
 					    sprintf(packet2, "%s:%s:", local_ip, local_port);
 						sprintf(packet2+strlen(packet2), "%s", local_id.get());
@@ -151,7 +150,7 @@ void* RPC::requestThread(void * p){
 			    // time threshold
 			    rpc->tx_time = steady_clock::now();
 			    float rtt = duration_cast<duration<double>>(steady_clock::now() - rpc->tx_time).count();
-			    printf("<< %s\n", packet);
+			    printf("\n<< %s\n", packet);
 			    // wait for response
 			    while((!rpc->response) && (rtt < t_Threshold)){
 			    	usleep(1000);
@@ -213,7 +212,7 @@ void* RPC::requestThread(void * p){
 		    	usleep(1000);
 		    	rtt = duration_cast<duration<double>>(steady_clock::now() - rpc->tx_time).count();
 		    }
-		    printf("\n");
+		    // printf("\n");
 		    if(closer >= local_k){
 		    	rpc->rtt = rtt;
 		    	retval = true;
@@ -234,7 +233,7 @@ void* RPC::requestThread(void * p){
 					sprintf(pack_ptr, "%s|", rpc->dstID.get());
 					sprintf(packet+strlen(packet), "%s|", rpc->key.get());
 					csock.send(packet, strlen(packet));
-				    printf("<< %s\n", packet);
+				    printf("\n<< %s\n", packet);
 				    // time threshold
 				    rpc->tx_time = steady_clock::now();
 		    		float rtt = duration_cast<duration<double>>(steady_clock::now() - rpc->tx_time).count();
@@ -243,7 +242,7 @@ void* RPC::requestThread(void * p){
 				    	usleep(1000);
 				    	rtt = duration_cast<duration<double>>(steady_clock::now() - rpc->tx_time).count();
 				    }
-				    printf("\n");
+				    // printf("\n");
 				    if(rpc->response){
 				    	rpc->rtt = rtt;
 				    	if(rpc->response->ack == '2'){
@@ -292,7 +291,7 @@ void* RPC::requestThread(void * p){
 			    	usleep(1000);
 			    	rtt = duration_cast<duration<double>>(steady_clock::now() - rpc->tx_time).count();
 			    }
-			    printf("\n");
+			    // printf("\n");
 			    if(found){
 			    	rpc->rtt = rtt;
 			    	retval = true;
@@ -340,7 +339,7 @@ void* RPC::respondThread(void * p){
     if(csock){
 		if(!strcmp(rpc->msg, "PING")){
 			csock.send(packet, strlen(packet));
-		    printf("<< %s\n", packet);
+		    printf("\n<< %s\n", packet);
 
 		}else if(!strcmp(rpc->msg, "STORE")){
 			// time threshold
@@ -352,7 +351,7 @@ void* RPC::respondThread(void * p){
 		    	rtt = duration_cast<duration<double>>(steady_clock::now() - rpc->tx_time).count();
 
 		    }
-		    printf("\n");
+		    // printf("\n");
 		    if(rpc->response){
 		    	// rpc->response->print();
 		    	rpc->rtt = rtt;
@@ -378,14 +377,14 @@ void* RPC::respondThread(void * p){
 			    }
 			    packet[strlen(packet)-1] = '\0';
 				csock.send(packet, strlen(packet));
-			    printf("<< %s\n", packet);
+			    printf("\n<< %s\n", packet);
 		    }
 		}else if(!strcmp(rpc->msg, "FIND_VALUE")){
 			string sfname = dht.get_file(rpc->key);
 			if(sfname != ""){
 				*ack_ptr = '2';
 				csock.send(packet, strlen(packet));
-		    	printf("<< %s\n", packet);
+		    	printf("\n<< %s\n", packet);
 				RPC* store = new RPC(rpc->srcID, "STORE", '0', false);
 				store->key = rpc->key;
 				store->request();
@@ -398,7 +397,7 @@ void* RPC::respondThread(void * p){
 				    }
 				    packet[strlen(packet)-1] = '\0';
 					csock.send(packet, strlen(packet));
-				    printf("<< %s\n", packet);
+				    printf("\n<< %s\n", packet);
 			    }
 			}
 		}else{
@@ -462,11 +461,11 @@ void RPC_Manager::handle(const char* _buf, const int _len){
 	}else{
 		// printf("rpc received.\n");
 		if(rpc->ack == '0'){
-			printf(">> %s\n", _buf); 
+			printf("\n>> %s\n", _buf); 
 			rpc->respond();
 		}else{
 			if(strcmp(rpc->msg, "STORE")){
-				printf(">> %s\n", _buf); 
+				printf("\n>> %s\n", _buf); 
 			}
 			RPC* it = 0;
 			for(auto& _r : RPC_list){
@@ -635,6 +634,7 @@ void* serverThread(void* p){
 		if((n = server.recv(recvbuf, &cliaddr, sizeof(recvbuf))) > 0){
 			// do something
 			recvbuf[n] = '\0';
+    		// printf(">> %s\n", recvbuf); 
     		rpc_mng.handle(recvbuf, n);
 
 		}else{
