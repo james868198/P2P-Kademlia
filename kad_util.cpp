@@ -650,39 +650,66 @@ void* serverThread(void* p){
 // ==========================================================================================
 unsigned char* SHA_1::to_hash(const char* _key){
 	static unsigned char _hash[SHA_DIGEST_LENGTH];
+	unsigned char tmp[SHA_DIGEST_LENGTH];
+
 	for(int i=0; i<SHA_DIGEST_LENGTH; i++){
-        sscanf(_key+i*2, "%02x", (unsigned int*)&_hash[i]);
-        // printf("%02x", _hash[i]);
+        sscanf(_key+2*i, "%02x", (unsigned int*)&tmp[i]);
+        // printf("%02x", _hash[SHA_DIGEST_LENGTH-i-1]);
+    }
+    for(int i=0; i<SHA_DIGEST_LENGTH; i++){
+    	_hash[i] = tmp[SHA_DIGEST_LENGTH - i - 1];
     }
 	// printf("\n");
+	// for(int i=0; i<SHA_DIGEST_LENGTH; i++){
+ //        printf("%02x", local_id.get_hash()[SHA_DIGEST_LENGTH-i-1]);
+ //    }
+ //    printf("\n");
 	return _hash;
 }
 
 SHA_1::SHA_1(const char* _str){
 	strcpy(str, _str);
 	SHA1((unsigned char*)str, strlen(str), (unsigned char*)hash);
+	char tmp[64] = "";
 	for(int i=0; i<SHA_DIGEST_LENGTH; i++){
-        sprintf(key+2*i, "%02x", hash[i]);
+        sprintf(tmp+2*i, "%02x", hash[i]);
     }
+    // printf("tmp : %s\n", tmp);
+    for(int i=0; i<40; i+=2){
+    	key[i+1] = tmp[40 - i - 1];
+    	key[i] = tmp[40 - i - 2];
+    }
+    // printf("key : %s\n", key);
 }
 
 SHA_1::SHA_1(const unsigned char* _hash){
+	char tmp[64] = "";
 	for(int i=0; i<SHA_DIGEST_LENGTH; i++){
 		hash[i] = _hash[i];
-        sprintf(key+2*i, "%02x", hash[i]);
+        sprintf(tmp+2*i, "%02x", hash[i]);
+    }
+    for(int i=0; i<40; i+=2){
+    	key[i+1] = tmp[40 - i - 1];
+    	key[i] = tmp[40 - i - 2];
     }
 }
 
 void SHA_1::set(const unsigned char* _hash){
+	char tmp[64] = "";
 	for(int i=0; i<SHA_DIGEST_LENGTH; i++){
 		hash[i] = _hash[i];
-        sprintf(key+2*i, "%02x", hash[i]);
+        sprintf(tmp+2*i, "%02x", hash[i]);
+    }
+    for(int i=0; i<40; i+=2){
+    	key[i+1] = tmp[40 - i - 1];
+    	key[i] = tmp[40 - i - 2];
     }
 }
 
 bool SHA_1::operator == (const SHA_1& a) const{
 	for(int i=0; i<SHA_DIGEST_LENGTH; ++i){
-		if(a.hash[i] != this->hash[i]){
+		// printf("%02x : %02x\n", a.hash[i], hash[i]);
+		if(a.hash[i] != hash[i]){
 			return false;
 		}
 	}
@@ -691,7 +718,8 @@ bool SHA_1::operator == (const SHA_1& a) const{
 
 bool SHA_1::operator == (const unsigned char* a) const{
 	for(int i=0; i<SHA_DIGEST_LENGTH; ++i){
-		if(a[i] != this->hash[i]){
+		// printf("%02x : %02x\n", a[i], hash[i]);
+		if(a[i] != hash[i]){
 			return false;
 		}
 	}
