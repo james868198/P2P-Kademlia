@@ -135,6 +135,13 @@ void cmd_handle(const char* _cmd){
 			int num = atoi(pos);
 			printf("%08.0f [bucket] %3d:", time_stamp(), num);
 			dht.print_buck(num);
+
+		}else if(!strcmp(cmd, "join")){
+			// e.g. join 192.168.1.37:8888
+			SHA_1 id(pos);
+			RPC* rpc = new RPC(id, "FIND_NODE", '0', false);
+			rpc->ID = local_id;
+			rpc->request();
 		}
 	}
 }
