@@ -97,10 +97,11 @@ int DHT::distance(const SHA_1& _a, const SHA_1& _b){
 	unsigned char byte = 0;
 	int i = 0;
 	for(i = 0; i<SHA_DIGEST_LENGTH; ++i){
+		// printf("%02x %02x %02x \n", a[i], b[i], byte);
 		if((byte = a[i] ^ b[i])){
 			unsigned char x = 1;
 			for(int j=0; j<8; ++j){
-				if(byte ^ x){
+				if(byte & x){
 					return (SHA_DIGEST_LENGTH - i)*8 - j;
 				}
 				x <<= 1;
