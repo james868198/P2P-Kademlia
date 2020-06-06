@@ -60,7 +60,7 @@ To join the network, you need to run a root P2P-Kademlia peer first and create a
 
     bootstrap #request_to_joing_ip
     port #request_to_joing_port
-    local_port 8888 #fault port
+    local_port #default port
     k 20
     alpha 3
     shared_folder Share/   
