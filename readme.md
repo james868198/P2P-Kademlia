@@ -85,6 +85,10 @@ to create another process and it will send th request to the root to ask it to j
     getBucket number        get specific bucket by number(number is between 1 to 160)
 
     get filename            get file from the network (e.g. get file1.txt)
+    
+    store filename address  store file to the node
+    
+    exit                    terminate the process
 
 ---
 
